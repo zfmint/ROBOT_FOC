@@ -1,0 +1,44 @@
+# CMake编译输出目录
+build/
+cmake-build-*/
+
+# CMake自动生成文件
+CMakeCache.txt
+CMakeFiles/
+CMakeScripts/
+Testing/
+Makefile
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+
+# VSCode 缓存
+.vscode/
+*.code-workspace
+
+# Windows系统文件
+Thumbs.db
+.DS_Store
+
+# 编译生成的可执行文件
+*.exe
+*.out
+*.o
+*.obj
+
+# MSVC 编译产物
+*.pdb
+*.ilk
+*.res
+*.vcxproj*
+*.sln
+
+# 临时文件
+*.tmp
+*.log
+*.bak
+*~
+
+# 编辑器临时文件
+*.swp
+*.swo
