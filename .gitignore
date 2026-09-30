@@ -42,3 +42,6 @@ Thumbs.db
 # 编辑器临时文件
 *.swp
 *.swo
+
+#AI说明文档
+*prompt.txt

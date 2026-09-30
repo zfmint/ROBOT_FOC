@@ -24,30 +24,35 @@ namespace robot_foc::hal{
         Peripheral& operator = (const Peripheral&) = delete;
 
         //移动构造（标准写法） noexcept表示无异常抛出，嵌入式极少使用异常
-        Peripheral(Peripheral&&) noexcept = default;
+        Peripheral(Peripheral&&) noexcept = delete;
         //移动赋值（标准写法）转移所有权
-        Peripheral& operator = (Peripheral&&) noexcept = default;
+        Peripheral& operator = (Peripheral&&) noexcept = delete;
 
         /**
          * @brief 外设初始化，子类实现
          * @return true 初始化成功，false 初始化失败
         */
-        virtual bool init() = 0;
+        virtual bool init() noexcept = 0;
         /**
          * @brief 外设反初始化，释放硬件资源，子类实现
          * @return true 反初始化成功，false 反初始化失败
         */
-        virtual bool deinit() = 0;
+        virtual bool deinit() noexcept = 0;
 
        /**
          * @brief 读取初始化状态，const只读，无法修改
          * @return true 已初始化，false 未初始化
         */
-        bool is_inited() const;
+        bool is_initialized() const noexcept;
     protected:
-        //保护变量，记录初始化状态，但怎么调用？
-        bool m_inited = false;
+        //[[nodiscard]] 表示属性
+        //以下表示必须接收返回值，不能直接丢弃返回的bool
+        [[nodiscard]] bool mark_initialized() noexcept;
+        [[nodiscard]] bool mark_deinitialized() noexcept;
 
+    private:
+        //私有变量，记录初始化状态
+        bool initialized_ = false;
     };
 }
 

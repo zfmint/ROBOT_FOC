@@ -14,6 +14,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 #后续新增HAL外设cpp往此追加
 add_library(robot_hal STATIC
     Src/HAL/peripheral.cpp
+    Src/DRIVERS/mock_gpio.cpp
 )
 
 #将Inc目录加入头文件搜索路径
@@ -21,6 +22,8 @@ add_library(robot_hal STATIC
 target_include_directories(robot_hal
     PUBLIC
         ${PROJECT_SOURCE_DIR}/Inc
+        ${PROJECT_SOURCE_DIR}/test/Inc
+
 )
 
 # 编译器为“MSVC”
@@ -31,6 +34,8 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
         /W4
         #警告只提示，不阻止编译
         /WX-
+        #禁用 MSVC 自家的非标准扩展，强制严格遵守 ISO C++ 标准
+        /permissive-
     )
 else()
     target_compile_options(robot_hal PRIVATE
@@ -38,6 +43,8 @@ else()
         -Wall
         #开启一批额外警告
         -Wextra
+        #强制遵循C++标准，拒绝GCC扩展语法
+        -Wpedantic
     )
 endif()
 #判断：如果不是交叉编译（在当前PC编译，不是编译STM32固件）
@@ -47,6 +54,8 @@ if(NOT CMAKE_CROSSCOMPILING)
     #源码为test目录下的pc_test_main.cpp
     add_executable(pc_test_peripheral
         test/pc_test_main.cpp
+        test/Src/test_dummy_periph.cpp
+        test/Src/test_mock_gpio.cpp
     )
     #让测试程序链接robot_hal静态库，使用HAL层的Peripheral基类代码
     target_link_libraries(pc_test_peripheral PRIVATE robot_hal)

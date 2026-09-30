@@ -1,54 +1,30 @@
-﻿#include "../Inc/HAL/peripheral.hpp"
-#include <iostream>
+﻿#include "test_helper.hpp"
 
-namespace robot_foc::hal{
-    class DummyPeripheral : public Peripheral
+// 【声明所有测试套件函数原型】
+// 新增测试套件只需要在这里增加函数声明
+bool test_dummy_peripheral();
+bool test_mock_gpio();
+// bool test_mock_uart();
+// bool test_mock_spi();
+
+int main()
+{
+    std::cout << "\n========== Start Unit Test ==========\n\n";
+
+    // ========== 测试套件注册列表（仅在此添加套件调用，main其余代码不动） ==========
+    test_dummy_peripheral();
+    test_mock_gpio();
+    // test_mock_uart();
+    // test_mock_spi();
+
+    // ========== 下面统计逻辑固定，永远不需要修改 ==========
+    std::cout << "\n====================================\n";
+    std::cout << "Total test failed: " << test_fail_cnt << "\n";
+    if (test_fail_cnt > 0)
     {
-    private:
-        /* data */
-    public:
-        DummyPeripheral(/* args */);
-        ~DummyPeripheral();
-        bool init() override{
-            if (m_inited){
-                std::cout<<"[DummyPeripheral] already inited\n";
-                return false;
-            }
-            m_inited = true;
-            std::cout <<"[DummyPeripheral] init success\n";
-            return true;
-        }
-
-        bool deinit() override{
-            if (!m_inited){
-                std::cout<<"[DummyPeripheral] already deinited\n";
-                return false;
-            }
-            m_inited = false;
-            std::cout <<"[DummyPeripheral] deinit success\n";
-            return true;
-        }
-
-
-    }; 
-    DummyPeripheral::DummyPeripheral(/* args */){
+        std::cerr << "❌ Some test cases failed!\n";
+        return EXIT_FAILURE;
     }
-    DummyPeripheral::~DummyPeripheral(){
-    }
-}
-
-
-int main(){
-    using namespace robot_foc::hal;
-    DummyPeripheral dev;
-
-    std::cout<<"Before init, is_inited ="<<(dev.is_inited() ? "true" : "false") << "\n";
-    
-    dev.init();
-    std::cout<<"After init, is_inited ="<<(dev.is_inited() ? "true" : "false") << "\n";
-
-    dev.deinit();
-    std::cout<<"After deinit, is_inited = "<<(dev.is_inited() ? "true" : "false") << "\n";
-
-    return 0;
+    std::cout << "✅ All test passed!\n";
+    return EXIT_SUCCESS;
 }
