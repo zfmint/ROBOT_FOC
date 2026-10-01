@@ -1,9 +1,10 @@
 ﻿#include "DRIVERS/mock_gpio.hpp"
+#include "HAL/gpio.hpp"
 
 namespace robot_foc::drivers
 {
-    MockGpio::MockGpio(uint8_t pinNumber)
-        :pinNumber_(pinNumber)
+    MockGpio::MockGpio(robot_foc::hal::GpioPin pin)
+        :Gpio (pin)
     { }
 
     MockGpio::~MockGpio() noexcept{
@@ -47,12 +48,12 @@ namespace robot_foc::drivers
         }
     }
 
-    bool MockGpio::readLevel() const noexcept{
+    bool MockGpio::readLevel(bool& out_level) const noexcept{
         if (is_initialized())
         {
-            return level_;
+            out_level = level_;
+            return true;
         }
-        
         return false;
     }
 } // namespace robot_foc::drivers

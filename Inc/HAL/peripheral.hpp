@@ -1,4 +1,27 @@
-﻿#ifndef PERIPHERAL_HPP
+﻿/**
+ * @file peripheral.hpp
+ * @brief 外设顶层抽象基类，HAL层所有外设的统一父类
+ *
+ * 设计层级关系：
+ * Peripheral（顶层外设生命周期基类，本文件）
+ *     └── Gpio（GPIO外设抽象接口）
+ *             └── MockGpio（PC仿真GPIO实现，单元测试用）
+ *             └── Stm32Gpio（单片机真实硬件GPIO实现，后续开发）
+ *     └── Uart（串口抽象接口，待实现）
+ *     └── Spi（SPI抽象接口，待实现）
+ *
+ * 职责：
+ * 1. 统一管理外设生命周期状态：维护initialized_初始化标记
+ * 2. 提供统一生命周期接口：init() / deinit()，由子类实现硬件逻辑
+ * 3. 提供状态访问接口 is_initialized()、状态标记 mark_initialized / mark_deinitialized
+ * 4. 约束对象语义：禁止拷贝、禁止移动，外设对象生命周期固定，不允许转移所有权
+ * 5. 无异常设计，全部接口 noexcept，使用bool返回值表达执行成功/失败，不使用C++异常
+ *
+ * 设计目标：
+ * 所有硬件外设驱动继承该基类，对外提供统一的生命周期API；
+ * 实现PC端Mock仿真版本与嵌入式硬件版本的接口对齐，一套上层业务代码可同时跑仿真与硬件。
+ */
+#ifndef PERIPHERAL_HPP
 #define PERIPHERAL_HPP
 
 namespace robot_foc::hal{
@@ -11,6 +34,14 @@ namespace robot_foc::hal{
      * 使用bool返回值表示执行结果
      */
     class Peripheral{
+    private:
+        //私有变量，记录初始化状态
+        bool initialized_ = false;    
+    protected:
+        //[[nodiscard]] 表示属性
+        //以下表示必须接收返回值，不能直接丢弃返回的bool
+        [[nodiscard]] bool mark_initialized() noexcept;
+        [[nodiscard]] bool mark_deinitialized() noexcept;
     public:
         //默认构建函数
         Peripheral() = default;
@@ -44,15 +75,6 @@ namespace robot_foc::hal{
          * @return true 已初始化，false 未初始化
         */
         bool is_initialized() const noexcept;
-    protected:
-        //[[nodiscard]] 表示属性
-        //以下表示必须接收返回值，不能直接丢弃返回的bool
-        [[nodiscard]] bool mark_initialized() noexcept;
-        [[nodiscard]] bool mark_deinitialized() noexcept;
-
-    private:
-        //私有变量，记录初始化状态
-        bool initialized_ = false;
     };
 }
 

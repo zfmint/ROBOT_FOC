@@ -25,6 +25,6 @@ int main()
         std::cerr << "❌ Some test cases failed!\n";
         return EXIT_FAILURE;
     }
-    std::cout << "✅ All test passed!\n";
+    std::cout << "All test passed!\n";
     return EXIT_SUCCESS;
 }

@@ -14,6 +14,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 #后续新增HAL外设cpp往此追加
 add_library(robot_hal STATIC
     Src/HAL/peripheral.cpp
+    Src/HAL/gpio.cpp
     Src/DRIVERS/mock_gpio.cpp
 )
 
