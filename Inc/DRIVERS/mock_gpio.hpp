@@ -36,7 +36,6 @@ namespace robot_foc::drivers
         //引脚高低电平
         robot_foc::hal::GpioLevel level_ = robot_foc::hal::GpioLevel::Low;
         robot_foc::hal::GpioMode mode_ = robot_foc::hal::GpioMode::Input;
-        bool is_inited_ = false;
 
         public:
         /**

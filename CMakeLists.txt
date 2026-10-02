@@ -23,8 +23,17 @@ add_library(robot_hal STATIC
 target_include_directories(robot_hal
     PUBLIC
         ${PROJECT_SOURCE_DIR}/Inc
-        ${PROJECT_SOURCE_DIR}/test/Inc
+)
 
+#测试程序
+add_executable(pc_test_peripheral
+    test/Src/test_mock_gpio.cpp)
+
+#测试程序链接robot_hal,并额外增加测试头文件目录
+target_link_libraries(pc_test_peripheral PRIVATE robot_hal)
+target_include_directories(pc_test_peripheral
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/test/Inc
 )
 
 # 编译器为“MSVC”

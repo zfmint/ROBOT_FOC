@@ -31,14 +31,12 @@ namespace robot_foc::hal{
     /// @brief  GPIO引脚编号
     struct GpioPin
     {
-        explicit constexpr GpioPin(uint8_t num) noexcept :num(num)
+        explicit constexpr GpioPin(std::uint8_t num) noexcept :num(num)
         { }
         std::uint8_t num;
     };
     class Gpio : public robot_foc::hal::Peripheral
     {
-    private:
-        /* data */
     public:
         explicit Gpio(GpioPin pin) noexcept;
         ~Gpio() override = default;
