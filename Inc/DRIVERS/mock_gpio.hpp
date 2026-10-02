@@ -34,8 +34,11 @@ namespace robot_foc::drivers
     {
     private:
         //引脚高低电平
-        bool level_ = false;
-    public:
+        robot_foc::hal::GpioLevel level_ = robot_foc::hal::GpioLevel::Low;
+        robot_foc::hal::GpioMode mode_ = robot_foc::hal::GpioMode::Input;
+        bool is_inited_ = false;
+
+        public:
         /**
          * @brief 构造函数，传入引脚序号
          * @param pinNumber 引脚序号
@@ -54,8 +57,10 @@ namespace robot_foc::drivers
         [[nodiscard]] bool setHigh() noexcept override;
         ///@brief 引脚拉低
         [[nodiscard]] bool setLow() noexcept override;
+        /// @brief 设置GPIO模式 输入/输出
+        [[nodiscard]] bool setMode(robot_foc::hal::GpioMode mode) noexcept override;
         ///@brief 读取当前引脚电平
-        [[nodiscard]] bool readLevel(bool& out_level) const noexcept override;
+        [[nodiscard]] bool readLevel(robot_foc::hal::GpioLevel& out_level) const noexcept override;
     };
 } // namespace robot_foc::drivers
 

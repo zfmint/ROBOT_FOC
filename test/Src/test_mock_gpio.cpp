@@ -9,85 +9,87 @@ bool test_mock_gpio()
 {
     std::cout << "\n===== Test Suite: MockGpio pin 5 =====" << std::endl;
     using namespace robot_foc;
-    // 显式构造GpioPin，解决explicit禁止隐式转换问题
-    drivers::MockGpio gpio(hal::GpioPin(5));
+    using namespace robot_foc::drivers;
+    using namespace robot_foc::hal;
 
-    bool out_level; // 用于readLevel的输出参数
-    bool ret;
+    MockGpio gpio(GpioPin{5});
 
-    // 场景1：未初始化时操作GPIO
+    // ========== 场景1：未初始化时操作GPIO ==========
     bool preSetHigh = gpio.setHigh();
     std::cout << "Before init, try setHigh: " << (preSetHigh ? "OK" : "FAIL") << "\n";
     EXPECT(preSetHigh == false, "MockGpio pre-init setHigh fail");
 
-    // 场景2：初始化
-    auto gpioInitRet = gpio.init();
-    std::cout << "gpio init result: " << (gpioInitRet ? "success" : "fail") << "\n";
-    EXPECT(gpioInitRet == true, "MockGpio first init ok");
+    GpioLevel read_buf = GpioLevel::Low;
+    bool preReadRet = gpio.readLevel(read_buf);
+    std::cout << "Before init, try readLevel: " << (preReadRet ? "OK" : "FAIL") << "\n";
+    EXPECT(preReadRet == false, "MockGpio pre-init readLevel fail");
 
-    // 场景3：高低电平读写
-    bool retHigh = gpio.setHigh();
-    // readLevel需要传引用变量
-    ret = gpio.readLevel(out_level);
-    std::cout << "setHigh, level = " << (out_level ? "High" : "Low") << "\n";
-    EXPECT(retHigh == true, "MockGpio setHigh return true");
-    EXPECT(ret == true, "readLevel operation success");
-    EXPECT(out_level == true, "MockGpio level high after setHigh");
+    bool preSetMode = gpio.setMode(GpioMode::Output);
+    std::cout << "Before init, try setMode: " << (preSetMode ? "OK" : "FAIL") << "\n";
+    EXPECT(preSetMode == false, "MockGpio pre-init setMode fail");
 
-    bool retLow = gpio.setLow();
-    ret = gpio.readLevel(out_level);
-    std::cout << "setLow, level = " << (out_level ? "High" : "Low") << "\n";
-    EXPECT(retLow == true, "MockGpio setLow return true");
-    EXPECT(ret == true, "readLevel operation success");
-    EXPECT(out_level == false, "MockGpio level low after setLow");
+    // ========== 场景2：初始化 ==========
+    bool gpioInitRet = gpio.init();
+    std::cout << "gpio init result: " << (gpioInitRet ? "OK" : "FAIL") << "\n";
+    EXPECT(gpioInitRet == true, "MockGpio init success");
 
-    // 场景4：反初始化
-    auto gpioDeinitRet = gpio.deinit();
-    std::cout << "gpio deinit result: " << (gpioDeinitRet ? "success" : "fail") << "\n";
-    EXPECT(gpioDeinitRet == true, "MockGpio deinit ok");
+    // 场景2.1：输入模式下尝试输出（应该失败）
+    bool setHighInInputMode = gpio.setHigh();
+    std::cout << "Input mode try setHigh: " << (setHighInInputMode ? "OK" : "FAIL") << "\n";
+    EXPECT(setHighInInputMode == false, "Input mode cannot setHigh");
 
-    bool afterDeinitHigh = gpio.setHigh();
-    std::cout << "After deinit, try setHigh: " << (afterDeinitHigh ? "OK" : "FAIL") << "\n";
-    EXPECT(afterDeinitHigh == false, "MockGpio after deinit setHigh fail");
+    // 切换为输出模式
+    bool setModeOut = gpio.setMode(GpioMode::Output);
+    std::cout << "Set mode to Output: " << (setModeOut ? "OK" : "FAIL") << "\n";
+    EXPECT(setModeOut == true, "SetMode Output success");
 
-    // 场景5：重复init，验证失败不修改对象状态
-    std::cout << "\n===== Repeat init test ====\n";
-    bool tmpRet = gpio.init();
-    EXPECT(tmpRet == true, "init");
-    tmpRet = gpio.setHigh();
-    EXPECT(tmpRet == true, "setHigh");
-    bool repeatInitRet = gpio.init();
-    ret = gpio.readLevel(out_level);
-    EXPECT(repeatInitRet == true, "MockGpio second init returns true");
-    EXPECT(ret == true, "readLevel operation success");
-    EXPECT(out_level == true, "MockGpio repeat init does NOT change level");
+    // ========== 场景3：输出模式，读写电平 ==========
+    bool retSetHigh = gpio.setHigh();
+    std::cout << "setHigh: " << (retSetHigh ? "OK" : "FAIL") << "\n";
+    EXPECT(retSetHigh == true, "setHigh success");
 
-    // ========== 新增：多态测试（Gpio基类指针指向MockGpio子类） ==========
+    bool retReadHigh = gpio.readLevel(read_buf);
+    EXPECT(retReadHigh == true, "readLevel success after setHigh");
+    EXPECT(read_buf == GpioLevel::High, "Pin level should be High");
+    std::cout << "Read level after setHigh: " << (read_buf == GpioLevel::High ? "High" : "Low") << "\n";
+
+    bool retSetLow = gpio.setLow();
+    std::cout << "setLow: " << (retSetLow ? "OK" : "FAIL") << "\n";
+    EXPECT(retSetLow == true, "setLow success");
+
+    bool retReadLow = gpio.readLevel(read_buf);
+    EXPECT(retReadLow == true, "readLevel success after setLow");
+    EXPECT(read_buf == GpioLevel::Low, "Pin level should be Low");
+    std::cout << "Read level after setLow: " << (read_buf == GpioLevel::High ? "High" : "Low") << "\n";
+
+    // ========== 场景4：多态测试，Gpio基类指针操作 ==========
     std::cout << "\n===== Polymorphism Test (Gpio base pointer) =====" << std::endl;
-    robot_foc::hal::Gpio* gpio_base_ptr = new robot_foc::drivers::MockGpio(robot_foc::hal::GpioPin(7));
-    bool ret_poly;
-    bool out_level_poly;
+    Gpio* base_gpio = &gpio;
+    bool polySetMode = base_gpio->setMode(GpioMode::Output);
+    EXPECT(polySetMode == true, "Polymorphism: setMode via base ptr ok");
+    bool polySetHigh = base_gpio->setHigh();
+    EXPECT(polySetHigh == true, "Polymorphism: setHigh via base ptr ok");
 
-    ret_poly = gpio_base_ptr->init();
-    EXPECT(ret_poly == true, "Polymorphism test: init success");
+    GpioLevel poly_buf = GpioLevel::Low;
+    bool polyRead = base_gpio->readLevel(poly_buf);
+    EXPECT(polyRead == true, "Polymorphism: readLevel via base ptr ok");
+    EXPECT(poly_buf == GpioLevel::High, "Polymorphism: level high");
 
-    ret_poly = gpio_base_ptr->setHigh();
-    EXPECT(ret_poly == true, "Polymorphism test: setHigh success");
+    // ========== 场景5：重复init测试 ==========
+    std::cout << "Before repeat init, is_initialized() = " << (gpio.is_initialized() ? "true" : "false") << "\n";
 
-    ret_poly = gpio_base_ptr->readLevel(out_level_poly);
-    EXPECT(ret_poly == true, "Polymorphism test: readLevel call success");
-    EXPECT(out_level_poly == true, "Polymorphism test: level is high");
+    bool repeatInitRet = gpio.init();
+    std::cout << "Repeat init: " << (repeatInitRet ? "OK" : "FAIL") << "\n";
+    EXPECT(repeatInitRet == false, "MockGpio repeat init return false, no state change");
 
-    ret_poly = gpio_base_ptr->setLow();
-    EXPECT(ret_poly == true, "Polymorphism test: setLow success");
-    ret_poly = gpio_base_ptr->readLevel(out_level_poly);
-    EXPECT(out_level_poly == false, "Polymorphism test: level is low");
+    // ========== 场景6：反初始化 + 重复deinit测试 ==========
+    bool deinitRet = gpio.deinit();
+    std::cout << "gpio deinit result: " << (deinitRet ? "OK" : "FAIL") << "\n";
+    EXPECT(deinitRet == true, "MockGpio deinit success");
 
-    ret_poly = gpio_base_ptr->deinit();
-    EXPECT(ret_poly == true, "Polymorphism test: deinit success");
-
-    // 释放内存；基类析构为virtual，会自动调用MockGpio析构，执行RAII deinit
-    delete gpio_base_ptr;
+    bool repeatDeinitRet = gpio.deinit();
+    std::cout << "Repeat deinit: " << (repeatDeinitRet ? "OK" : "FAIL") << "\n";
+    EXPECT(repeatDeinitRet == false, "MockGpio repeat deinit return false");
 
     return true;
 }

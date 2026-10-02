@@ -4,7 +4,7 @@
 namespace robot_foc::drivers
 {
     MockGpio::MockGpio(robot_foc::hal::GpioPin pin)
-        :Gpio (pin)
+        : Gpio(pin)
     { }
 
     MockGpio::~MockGpio() noexcept{
@@ -14,41 +14,50 @@ namespace robot_foc::drivers
     }
 
     bool MockGpio::init() noexcept{
-        if (is_initialized())
-        {
-            return true;
-        }
         if (!mark_initialized())
         {
             return false;
         }
-        level_ = false;
+        level_ = robot_foc::hal::GpioLevel::Low;
+        mode_ = robot_foc::hal::GpioMode::Input;
         return true;
     }
 
     bool MockGpio::deinit() noexcept{
-        return mark_deinitialized();
-    }
-    
-    bool MockGpio::setHigh() noexcept{
-        if (is_initialized()){
-            level_ = true;
-            return true;
-        }else{
+        // 未初始化，重复deinit返回false
+        if(!is_initialized())
+        {
             return false;
         }
+        return mark_deinitialized();    }
+    
+    bool MockGpio::setHigh() noexcept{
+        if (is_initialized() && mode_ == robot_foc::hal::GpioMode::Output){
+            level_ = robot_foc::hal::GpioLevel::High;
+            return true;
+        }
+        return false;
     }
 
     bool MockGpio::setLow() noexcept{
-        if (is_initialized()){
-            level_ = false;
+        if (is_initialized() && mode_ == robot_foc::hal::GpioMode::Output){
+            level_ = robot_foc::hal::GpioLevel::Low;
             return true;
-        }else{
-            return false;
         }
+        return false;
     }
 
-    bool MockGpio::readLevel(bool& out_level) const noexcept{
+    bool MockGpio::setMode(robot_foc::hal::GpioMode mode) noexcept
+    {
+        if (!is_initialized())
+        {
+            return false;
+        }
+        mode_ = mode;
+        return true;
+    }
+
+    bool MockGpio::readLevel(robot_foc::hal::GpioLevel& out_level) const noexcept{
         if (is_initialized())
         {
             out_level = level_;
