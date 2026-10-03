@@ -1,36 +1,59 @@
-﻿#ifndef TEST_HELPER_HPP
+#ifndef TEST_HELPER_HPP
 #define TEST_HELPER_HPP
 
-#include <iostream>
+#include <cstddef>
 #include <cstdlib>
+#include <iostream>
 
-inline int test_fail_cnt = 0;
+// 全局测试失败计数，inline保证多文件包含不重复定义
+inline std::size_t test_failure_count{0U};
 
 /**
- * @brief 断言底层实现，由宏自动带入文件名、行号
- * @param cond 判断条件
- * @param case_name 用例名称
- * @param file 文件路径
- * @param line 代码行号
+ * @brief 测试断言底层实现函数
+ * @param condition 判定条件真假
+ * @param case_name 测试用例名字符串
+ * @param file 源文件名 __FILE__
+ * @param line 代码行号 __LINE__
  */
-inline void expect_impl(bool cond,const char* case_name,
-                        const char* file,int line){
-    if (!cond){
-        test_fail_cnt++;
-        //std::cerr是标准错误输出流，专门输出错误信息，调用后立刻打印
-        std::cerr<<"[FAIL]"<< case_name<<"|"<<file<<":"<<line<<"\n";
-    }else{
-        std::cout<<"[PASS]"<<case_name<<"\n";
+inline void expect_impl(
+    const bool condition,
+    const char* case_name,
+    const char* file,
+    const int line) noexcept
+{
+    if (!condition)
+    {
+        ++test_failure_count;
+        std::cerr << "[FAIL] " << case_name << " | " << file << ':' << line << '\n';
+        return;
     }
+    std::cout << "[PASS] " << case_name << '\n';
 }
 
 /**
- * @brief 断言宏
- * @param cond 判断条件
- * @param case_name 用例名称
- * @param 自动填充__FILE__,__LINE__)
+ * @brief EXPECT 断言：失败仅计数，继续执行后续测试
+ * @param condition 判断表达式
+ * @param case_name 字符串字面量，测试用例名称
+ * @note 续行符\必须是行最后一个字符，后面不能有空格
  */
-#define EXPECT(cond,case_name)  expect_impl((cond),(case_name),__FILE__,__LINE__)
+#define EXPECT(condition, case_name) \
+do{ \
+    bool const cond_val = static_cast<bool>(condition); \
+    expect_impl(cond_val, (case_name), __FILE__, __LINE__); \
+}while(0)
 
+/**
+ * @brief ASSERT 断言：失败直接return退出当前测试函数
+ * @param condition 判断表达式
+ * @param case_name 字符串字面量，测试用例名称
+ */
+#define ASSERT(condition, case_name) \
+do{ \
+    bool const cond_val = static_cast<bool>(condition); \
+    if(!cond_val){ \
+        expect_impl(false, case_name, __FILE__, __LINE__); \
+        return false; \
+    } \
+}while(0)
 
-#endif
+#endif // TEST_HELPER_HPP
