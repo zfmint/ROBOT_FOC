@@ -28,12 +28,16 @@ namespace robot_foc::hal
     class ByteRingBuffer
     {
     //模板参数必须>=2，可以存2字节。
-    static_assert (Capacity >= 2U,"ByteRingBuffer: Capacity must >= 2");
+    static_assert(Capacity >= 2U,"ByteRingBuffer: Capacity must >= 2");
     
-    private:
+    private: 
+        /// @brief 底层存储数组
         std::uint8_t buf_[Capacity]{};
+        /// @brief 下一次写入的位置下标
         std::size_t write_idx_{};
+        /// @brief 下一次读取的位置下标
         std::size_t read_idx_{};
+        /// @brief 当前缓冲区有效字节数
         std::size_t count_{0U};
 
     public:

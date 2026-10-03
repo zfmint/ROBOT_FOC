@@ -51,10 +51,15 @@ namespace robot_foc::hal
      */
     class Gpio : public Peripheral
     {
+    private:
+        ///@brief 引脚编号
+        GpioPin pin_;
+        
     public:
         explicit Gpio(GpioPin pin) noexcept;
         ~Gpio() noexcept override = default;
 
+        /// @brief 禁止拷贝、移动
         Gpio(const Gpio&) = delete;
         Gpio& operator=(const Gpio&) = delete;
         Gpio(Gpio&&) noexcept = delete;
@@ -69,9 +74,6 @@ namespace robot_foc::hal
         {
             return pin_;
         }
-
-    protected:
-        GpioPin pin_;
     };
 
 } // namespace robot_foc::hal

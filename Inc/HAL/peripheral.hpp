@@ -26,6 +26,10 @@ namespace robot_foc::hal
      */
     class Peripheral
     {
+    private:
+        ///@brief 初始化完成标志
+        bool initialized_{false};
+
     public:
         Peripheral() noexcept = default;
         virtual ~Peripheral() noexcept = default;
@@ -56,9 +60,6 @@ namespace robot_foc::hal
 
         /** @brief 将状态从已初始化转换为未初始化。 */
         [[nodiscard]] bool mark_deinitialized() noexcept;
-
-    private:
-        bool initialized_{false};
     };
 
 } // namespace robot_foc::hal
