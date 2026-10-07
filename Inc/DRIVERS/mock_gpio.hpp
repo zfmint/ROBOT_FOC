@@ -14,8 +14,8 @@
  * @warning 仅用于单元测试仿真，**不能在嵌入式目标板上用于控制真实硬件**
  */
 
-#ifndef MOCK_GPIO_HPP
-#define MOCK_GPIO_HPP
+#ifndef ROBOT_FOC_DRIVERS_MOCK_GPIO_HPP
+#define ROBOT_FOC_DRIVERS_MOCK_GPIO_HPP
 
 #include "HAL/gpio.hpp"
 
@@ -30,6 +30,11 @@ namespace robot_foc::drivers
     public:
         explicit MockGpio(robot_foc::hal::GpioPin pin);
         ~MockGpio() noexcept override;
+
+        MockGpio(const MockGpio&) = delete;
+        MockGpio& operator=(const MockGpio&) = delete;
+        MockGpio(MockGpio&&) noexcept = delete;
+        MockGpio& operator=(MockGpio&&) noexcept = delete;
 
         [[nodiscard]] bool init() noexcept override;
         [[nodiscard]] bool deinit() noexcept override;

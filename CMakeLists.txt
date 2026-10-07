@@ -81,6 +81,8 @@ if(NOT CMAKE_CROSSCOMPILING)
         test/Src/test_mock_gpio.cpp
         # 环形缓冲区单元测试
         test/Src/test_byte_ring_buffer.cpp
+        # 串口单元测试
+        test/Src/test_mock_uart.cpp
     )
 
     # PRIVATE：头文件路径仅当前pc_test_peripheral编译时生效

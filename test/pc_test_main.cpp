@@ -6,6 +6,7 @@
 bool test_dummy_peripheral();
 bool test_mock_gpio();
 bool test_byte_ring_buffer();
+bool test_mock_uart();
 
 int main()
 {
@@ -14,6 +15,7 @@ int main()
     (void)test_dummy_peripheral();
     (void)test_mock_gpio();
     (void)test_byte_ring_buffer();
+    (void)test_mock_uart();
 
     std::cout << "\n====================================\n";
     std::cout << "Total test failed: " << test_failure_count << '\n';
