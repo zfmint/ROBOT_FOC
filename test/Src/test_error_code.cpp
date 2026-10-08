@@ -4,10 +4,13 @@
  * @details 验证错误码枚举相等性、不等性、字符串转换函数 error_code_to_str 基础逻辑；
  *          使用EXPECT，单条失败继续跑完剩余用例，最后统一汇总失败计数
  */
-#include "COMMON/error_code.hpp"
-#include "test_helper.hpp"
+
 #include <cstring>
 #include <cstdio>
+
+#include "COMMON/error_code.hpp"
+#include "test_helper.hpp"
+
 
 bool test_error_code()
 {

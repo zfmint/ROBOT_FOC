@@ -15,6 +15,12 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # CMAKE_CXX_EXTENSIONS OFF：关闭编译器扩展语法，使用标准C++17，提升跨编译器兼容性
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# Visual Studio生成器默认通过CMAKE_CXX_FLAGS注入/EHsc。
+# 先移除全局异常选项，再由各目标分别选择异常模型，避免/EHsc与/EHs-c-互相覆盖。
+if(MSVC)
+    string(REGEX REPLACE "(^| )[/-]EH[^ ]*" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+endif()
+
 ##############################################################################
 # robot_hal：生产静态库目标，HAL抽象层 + 设备驱动层核心业务代码
 # @brief 生产库，用于STM32固件，禁用C++异常、RTTI
