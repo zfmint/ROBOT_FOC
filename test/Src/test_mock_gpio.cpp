@@ -4,11 +4,9 @@
  *          使用EXPECT，单条失败继续跑完剩余用例，最后统一汇总失败计数
  * @param gpio 基类引用，外部传入具体实例
  */
-
-#include "test_helper.hpp"
 #include "HAL/gpio.hpp"
+#include "test_helper.hpp"
 #include "COMMON/error_code.hpp"
-#include "DRIVERS/mock_gpio.hpp"
 
 bool run_gpio_common_tests(robot_foc::hal::Gpio& gpio)
 {
@@ -59,7 +57,7 @@ bool run_gpio_common_tests(robot_foc::hal::Gpio& gpio)
     EXPECT(ret_cfg_after_init == ErrorCode::ErrorAlreadyInit, "GPIO configure reject when initialized");
     EXPECT(gpio.get_config().mode == after_init_cfg.mode, "GPIO config unchanged after init");
 
-    // 切换为输入模式
+    // 切换为输入模式（通用HAL契约，真实硬件也需要遵守）
     auto ret_set_mode_in = gpio.set_mode(GpioMode::Input);
     EXPECT(ret_set_mode_in == ErrorCode::Ok, "GPIO switch to input mode");
     // 输入模式禁止输出电平，set_high返回ErrorUnsupported
@@ -125,25 +123,60 @@ bool run_gpio_common_tests(robot_foc::hal::Gpio& gpio)
 /**
  * @brief MockGpio 单元测试入口
  * @details 实例创建、Mock专属注入逻辑；调用通用GPIO行为测试
+ *          Mock专属：模拟外部引脚输入电平注入，仅校验Mock仿真实现
  */
+#include "DRIVERS/mock_gpio.hpp"
 bool test_mock_gpio()
 {
     using robot_foc::drivers::MockGpio;
     using robot_foc::hal::GpioPin;
     using robot_foc::hal::GpioLevel;
+    using robot_foc::hal::GpioMode;
+    using robot_foc::hal::GpioConfig;
+    using robot_foc::hal::GpioPull;
+    using robot_foc::common::ErrorCode;
 
     const std::size_t fail_start = test_failure_count;
 
-    // 【Setup：实例构造，仅Mock相关】
+    // 【Setup：实例构造】
     MockGpio gpio{GpioPin{5U}};
 
-    // ===== Mock专属操作：外部输入电平注入，不属于通用HAL行为，放在这里 =====
-    gpio.mock_force_input_level(GpioLevel::High);
-
-    // 调用通用测试，传入基类引用
+    // 调用通用HAL行为测试（无mock注入逻辑）
     run_gpio_common_tests(gpio);
 
-    // 可选：可在此增加少量仅Mock特有的断言（不属于通用GPIO契约）
+    // ========== Mock专属测试区域（仅Mock仿真器校验，不属于通用Gpio契约） ==========
+    auto ret_deinit_common = gpio.deinit();
+    EXPECT(ret_deinit_common == ErrorCode::Ok, "MockGpio common test cleanup ok");
+    // 配置为输入模式
+    GpioConfig input_cfg{
+        GpioMode::Input,
+        GpioPull::PullUp,
+        GpioLevel::Low
+    };
+    auto ret_cfg_input = gpio.configure(input_cfg);
+    EXPECT(ret_cfg_input == ErrorCode::Ok, "MockGpio configure input mode ok");
+
+    auto ret_init_input = gpio.init();
+    EXPECT(ret_init_input == ErrorCode::Ok, "MockGpio init input mode ok");
+
+    auto ret_set_in = gpio.set_mode(GpioMode::Input);
+    EXPECT(ret_set_in == ErrorCode::Ok, "MockGpio switch to input mode");
+
+    // Mock注入动作：模拟外部硬件驱动引脚电平
+    gpio.mock_force_input_level(GpioLevel::High);
+
+    // 读取并校验注入电平
+    GpioLevel lv;
+    auto ret_read = gpio.read_level(lv);
+    EXPECT(ret_read == ErrorCode::Ok, "MockGpio read injected level ok");
+    EXPECT(lv == GpioLevel::High, "MockGpio injected input level match");
+
+    // 输入模式禁止set_high输出
+    auto ret_set_high_in = gpio.set_high();
+    EXPECT(ret_set_high_in == ErrorCode::ErrorUnsupported, "MockGpio input mode reject set_high");
+
+    auto ret_deinit_input = gpio.deinit();
+    EXPECT(ret_deinit_input == ErrorCode::Ok, "MockGpio input test cleanup ok");
 
     return test_failure_count == fail_start;
 }
