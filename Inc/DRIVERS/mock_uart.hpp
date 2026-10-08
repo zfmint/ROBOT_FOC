@@ -21,86 +21,110 @@ namespace robot_foc::drivers
     {
     private:
         /// @brief 发送缓冲区
-        robot_foc::hal::ByteRingBuffer<TxBufferCapacity> tx_buf_;
+        typename robot_foc::hal::ByteRingBuffer<TxBufferCapacity> tx_buf_;
+        using ErrorCode = typename robot_foc::hal::Uart<RxBufferCapacity>::ErrorCode;
     public:
         MockUart() noexcept = default;
-        ~MockUart() noexcept override
-        {
-            if (this->is_initialized())
-            {
-                (void) deinit();
-            }
-            
-        }
+        ~MockUart() noexcept override = default;
 
         MockUart(const MockUart&) = delete;
         MockUart& operator=(const MockUart&) = delete;
         MockUart(MockUart&&) noexcept = delete;
         MockUart& operator=(MockUart&&) noexcept = delete;
-        
-        /// @brief 反初始化
-        /// @return true 反初始化成功
-        [[nodiscard]] bool deinit() noexcept override
+
+        /**
+         * @brief 初始化Mock UART
+         * @return Ok；ErrorAlreadyInit
+         */
+        [[nodiscard]] ErrorCode init() noexcept override
+        {
+            if (this->is_initialized())
+            {
+                return ErrorCode::ErrorAlreadyInit;
+            }
+            const auto& cfg = this->get_config();
+            if (!this->validate_config(cfg))
+            {
+                return ErrorCode::ErrorInvalidParam;
+            }
+            return this->mark_initialized();
+        }
+
+        /**
+         * @brief 反初始化
+         * @return Ok；ErrorNotReady
+         */
+        [[nodiscard]] ErrorCode deinit() noexcept override
         {
             if (!this->is_initialized())
             {
-                return false;
+                return ErrorCode::ErrorNotReady;
             }
-            (void) tx_clear();
-            (void) this->rx_clear();
+            auto ret_mark = this->mark_deinitialized();
+            if (ret_mark != ErrorCode::Ok)
+            {
+                return ret_mark;
+            }
+            
+            tx_clear();
+            this->rx_clear();
             this->clear_rx_overflow();
-            robot_foc::hal::UartConfig default_cfg{};
-            this->set_config(default_cfg);
-            (void) this->mark_deinitialized();
-            return true;
+            
+            return ErrorCode::Ok;
         }
 
         /**
          * @brief 发送单个字节数据
+         * @return Ok；ErrorNotReady；ErrorBufferFull
          */
-        [[nodiscard]] bool send_byte(std::uint8_t byte) noexcept override
+        [[nodiscard]] ErrorCode send_byte(std::uint8_t byte) noexcept override
         {
             if (!this->is_initialized())
             {
-                return false;
+                return ErrorCode::ErrorNotReady;
             }
-            return tx_buf_.push(byte);
+            if (tx_buf_.push(byte))
+            {
+                return ErrorCode::Ok;
+            }
+            return ErrorCode::ErrorBufferFull;
         }
 
         /**
          * @brief 发送多个字节数据
+         * @return Ok；ErrorNotReady；ErrorBufferFull；ErrorInvalidParam
          */
-        [[nodiscard]] bool send_bytes(const std::uint8_t* data, std::size_t len) noexcept override
+        [[nodiscard]] ErrorCode send_bytes(const std::uint8_t* data, std::size_t len) noexcept override
         {
-            ///未初始化
+            // 未初始化
             if (!this->is_initialized())
             {
-                return false;
+                return ErrorCode::ErrorNotReady;
             }
-            ///0长度返回true
+            // 0长度直接成功
             if (len == 0U)
             {
-                return true;
+                return ErrorCode::Ok;
             }
-            ///空指针校验
+            // 空指针校验
             if (data == nullptr)
             {
-                return false;
+                return ErrorCode::ErrorInvalidParam;
             }
-            ///预检查，缓冲区剩余空间是否足够
+            // 预检查，缓冲区剩余空间是否足够
             if (tx_buf_.capacity() - tx_buf_.size() < len)
             {
-                return false;
+                return ErrorCode::ErrorBufferFull;
             }
-            ///空间足够，一次性全部写入
+            // 空间足够，一次性全部写入
             for (std::size_t i = 0U; i < len; ++i)
             {
                 (void) tx_buf_.push(data[i]);
             }
-            return true;
+            return ErrorCode::Ok;
         }
 
-        /// @brief 测试用tx接口        
+        /// @brief 测试用tx接口
         /**
          * @brief 清空发送环形缓冲区（主任务调用）
          */
@@ -110,7 +134,7 @@ namespace robot_foc::drivers
         }
 
         /**
-         * @brief 查询发送缓冲区可用的字节数量（主任务调用）
+         * @brief 查询发送缓冲区待发送字节数量（主任务调用）
          * @return 缓冲区中待发送字节数目
          */
         [[nodiscard]] std::size_t tx_available() const noexcept
@@ -119,7 +143,9 @@ namespace robot_foc::drivers
         }
 
         /**
-         * @brief 从发送缓冲区读取1字节（主循环调用）
+         * @brief 从发送缓冲区读取1字节（单元测试使用，取出mock收到的发送数据）
+         * @param out_byte [out] 输出读到的字节
+         * @return true读取成功，false缓冲区空
          */
         [[nodiscard]] bool tx_read(std::uint8_t& out_byte) noexcept
         {
@@ -129,19 +155,18 @@ namespace robot_foc::drivers
         /**
          * @brief 模拟硬件收到一字节，注入到Uart基类接收缓冲区
          * @param byte 模拟收到的串口字节
-         * @return true 注入成功 false 外设未初始化，拒绝写入
+         * @return Ok成功；ErrorNotReady外设未初始化；ErrorBufferFull接收缓存满
          * @note 单元测试调用，等价于硬件ISR里调用push_rx
          */
-        [[nodiscard]] bool inject_rx(std::uint8_t byte) noexcept
+        [[nodiscard]] ErrorCode inject_rx(std::uint8_t byte) noexcept
         {
             if (!this->is_initialized())
             {
-                return false;
+                return ErrorCode::ErrorNotReady;
             }
             return this->push_rx(byte);
         }
     };
 } // namespace robot_foc::drivers
 
-
-#endif
+#endif // ROBOT_FOC_DRIVERS_MOCK_UART_HPP

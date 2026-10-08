@@ -17,6 +17,8 @@
 #ifndef ROBOT_FOC_HAL_PERIPHERAL_HPP
 #define ROBOT_FOC_HAL_PERIPHERAL_HPP
 
+#include "COMMON/error_code.hpp"
+
 namespace robot_foc::hal
 {
 
@@ -31,6 +33,8 @@ namespace robot_foc::hal
         bool initialized_{false};
 
     public:
+        using ErrorCode = robot_foc::common::ErrorCode;
+
         Peripheral() noexcept = default;
         virtual ~Peripheral() noexcept = default;
 
@@ -41,27 +45,27 @@ namespace robot_foc::hal
 
         /**
          * @brief 初始化外设资源。
-         * @return true 表示初始化成功，false 表示失败或已初始化。
+         * @return Ok 初始化成功；ErrorAlreadyInit 重复初始化；ErrorInvalidParam 配置非法；ErrorHardwareFault 硬件故障
          */
-        [[nodiscard]] virtual bool init() noexcept = 0;
+        [[nodiscard]] virtual ErrorCode init() noexcept = 0;
 
         /**
          * @brief 释放外设资源。
-         * @return true 表示反初始化成功，false 表示失败或未初始化。
+         * @return Ok 反初始化成功；ErrorNotReady 尚未初始化；ErrorHardwareFault 硬件故障
          */
-        [[nodiscard]] virtual bool deinit() noexcept = 0;
+        [[nodiscard]] virtual ErrorCode deinit() noexcept = 0;
 
         /** @brief 查询外设是否已经初始化。 */
         [[nodiscard]] bool is_initialized() const noexcept;
 
     protected:
         /** @brief 将状态从未初始化转换为已初始化。 */
-        [[nodiscard]] bool mark_initialized() noexcept;
+        [[nodiscard]] ErrorCode mark_initialized() noexcept;
 
         /** @brief 将状态从已初始化转换为未初始化。 */
-        [[nodiscard]] bool mark_deinitialized() noexcept;
+        [[nodiscard]] ErrorCode mark_deinitialized() noexcept;
     };
 
 } // namespace robot_foc::hal
 
-#endif // PERIPHERAL_HPP
+#endif // ROBOT_FOC_HAL_PERIPHERAL_HPP

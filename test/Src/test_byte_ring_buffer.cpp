@@ -10,6 +10,7 @@ bool test_byte_ring_buffer()
 {
     using robot_foc::hal::ByteRingBuffer;
     std::uint8_t out_val{};
+    const std::size_t fail_start = test_failure_count;
 
     // ========== 测试1：缓冲区初始状态 ==========
     ByteRingBuffer<8> rb8;
@@ -43,6 +44,16 @@ bool test_byte_ring_buffer()
 
     EXPECT(rb_peek.pop(out_val), "pop after peek operation");
     EXPECT(out_val == 0xAA, "pop get same byte as peek");
+
+    // ========== 测试3.1：多次peek，队首保持不变 ==========
+    ByteRingBuffer<4> rb_multi_peek;
+    EXPECT(rb_multi_peek.push(0x10), "multi peek push 0x10");
+    EXPECT(rb_multi_peek.push(0x20), "multi peek push 0x20");
+    EXPECT(rb_multi_peek.peek(out_val), "multi peek #1");
+    EXPECT(out_val == 0x10, "multi peek #1 val");
+    EXPECT(rb_multi_peek.peek(out_val), "multi peek #2");
+    EXPECT(out_val == 0x10, "multi peek #2 val");
+    EXPECT(rb_multi_peek.size() == 2U, "peek does not consume data");
 
     // ========== 测试4：写满缓冲区，full状态校验，满时push拒绝写入 ==========
     ByteRingBuffer<8> rb_fill;
@@ -83,11 +94,15 @@ bool test_byte_ring_buffer()
     EXPECT(rb_wrap.push(60U), "wrap push 60");
     EXPECT(rb_wrap.full(), "buffer full after wrap write");
 
-    // 依次读取剩余全部数据
-    EXPECT(rb_wrap.pop(out_val) && out_val == 30U,"wrap pop value 30");
-    EXPECT(rb_wrap.pop(out_val) && out_val == 40U,"wrap pop value 40");
-    EXPECT(rb_wrap.pop(out_val) && out_val == 50U,"wrap pop value 50");
-    EXPECT(rb_wrap.pop(out_val) && out_val == 60U,"wrap pop value 60");
+    // 依次读取剩余全部数据，拆分为独立断言
+    EXPECT(rb_wrap.pop(out_val), "wrap pop value 30");
+    EXPECT(out_val == 30U, "wrap pop value 30");
+    EXPECT(rb_wrap.pop(out_val), "wrap pop value 40");
+    EXPECT(out_val == 40U, "wrap pop value 40");
+    EXPECT(rb_wrap.pop(out_val), "wrap pop value 50");
+    EXPECT(out_val == 50U, "wrap pop value 50");
+    EXPECT(rb_wrap.pop(out_val), "wrap pop value 60");
+    EXPECT(out_val == 60U, "wrap pop value 60");
     EXPECT(rb_wrap.empty(), "buffer empty after wrap read all");
 
     // ========== 测试6：clear清空缓冲区测试 ==========
@@ -108,8 +123,13 @@ bool test_byte_ring_buffer()
     EXPECT(rb_min.full(), "min capacity buffer full");
     EXPECT(!rb_min.push(0x03), "min capacity full push reject");
 
-    EXPECT((rb_min.pop(out_val) && out_val == 0x01), "min cap pop value 0x01");
-    EXPECT((rb_min.pop(out_val) && out_val == 0x02), "min cap pop value 0x02");
+    EXPECT(rb_min.pop(out_val), "min cap pop value 0x01");
+    EXPECT(out_val == 0x01, "min cap pop value 0x01");
+    EXPECT(rb_min.pop(out_val), "min cap pop value 0x02");
+    EXPECT(out_val == 0x02, "min cap pop value 0x02");
     EXPECT(rb_min.empty(), "min cap buffer empty after pop all");
-    return true;
+
+    const std::size_t fail_end = test_failure_count;
+    // 本用例内部新增失败 ==0 返回true
+    return (fail_end == fail_start);
 }

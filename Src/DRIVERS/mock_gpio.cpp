@@ -1,102 +1,119 @@
 /**
  * @file mock_gpio.cpp
- * @brief PC端MockGpio模拟GPIO实现，用于单元测试
- * @details
- *  用途：单元测试仿真，模拟外设生命周期与GPIO行为，不操作真实硬件寄存器；
- *  特性：
- *      1. 继承hal::Gpio，遵从Peripheral顶层生命周期规范，复用基类initialized_状态管理；
- *      2. 仿真引脚电平level_、引脚模式mode_；仅当已初始化且模式为Output时，set_high/set_low生效；
- *      3. 析构自动检测初始化状态，若未deinit则自动执行deinit，避免测试资源残留；
- *      4. 所有接口noexcept，与HAL硬件GPIO接口行为保持一致；
- *      5. init/deinit会重置模拟的电平、模式为默认状态。
- * @author Robot_FOC Project
- * @warning 仅用于PC单元测试仿真，**不可下载到嵌入式硬件控制真实GPIO**
+ * @brief MockGpio 模拟GPIO实现
  */
-
 #include "DRIVERS/mock_gpio.hpp"
 
 namespace robot_foc::drivers
 {
+using ErrorCode = typename robot_foc::hal::Gpio::ErrorCode;
 
-    MockGpio::MockGpio(robot_foc::hal::GpioPin pin)
-        : Gpio(pin)
+MockGpio::MockGpio(hal::GpioPin pin) noexcept
+    : Gpio(pin)
+{}
+
+[[nodiscard]] MockGpio::ErrorCode MockGpio::configure(const hal::GpioConfig& cfg) noexcept
+{
+    if (this->is_initialized())
     {
+        return ErrorCode::ErrorAlreadyInit;
+    }
+    return this->set_config(cfg);
+}
+
+[[nodiscard]] MockGpio::ErrorCode MockGpio::init() noexcept
+{
+    if (this->is_initialized())
+    {
+        return ErrorCode::ErrorAlreadyInit;
+    }
+    const auto ret_mark = this->mark_initialized();
+    if (ret_mark != ErrorCode::Ok)
+    {
+        return ret_mark;
     }
 
-    MockGpio::~MockGpio() noexcept
+    // 从基类读取配置，初始化仿真状态
+    const auto& cfg = this->get_config();
+    mode_ = cfg.mode;
+    level_ = cfg.init_level;
+
+    return ErrorCode::Ok;
+}
+
+[[nodiscard]] MockGpio::ErrorCode MockGpio::deinit() noexcept
+{
+    if (!this->is_initialized())
     {
-        if (is_initialized())
-        {
-            (void)deinit();
-        }
+        return ErrorCode::ErrorNotReady;
+    }
+    const auto ret_mark = this->mark_deinitialized();
+    if (ret_mark != ErrorCode::Ok)
+    {
+        return ret_mark;
     }
 
-    bool MockGpio::init() noexcept
+    // 仅重置运行时仿真状态；基类config_保留不变
+    level_ = hal::GpioLevel::Low;
+    mode_  = hal::GpioMode::Input;
+    return ErrorCode::Ok;
+}
+
+[[nodiscard]] MockGpio::ErrorCode MockGpio::set_high() noexcept
+{
+    if (!this->is_initialized())
     {
-        if (!mark_initialized())
-        {
-            return false;
-        }
-
-        level_ = robot_foc::hal::GpioLevel::Low;
-        mode_ = robot_foc::hal::GpioMode::Input;
-        return true;
+        return ErrorCode::ErrorNotReady;
     }
-
-    bool MockGpio::deinit() noexcept
+    if (mode_ != hal::GpioMode::OutputPushPull && mode_ != hal::GpioMode::OutputOpenDrain)
     {
-        if (!mark_deinitialized())
-        {
-            return false;
-        }
-
-        level_ = robot_foc::hal::GpioLevel::Low;
-        mode_ = robot_foc::hal::GpioMode::Input;
-        return true;
+        return ErrorCode::ErrorUnsupported;
     }
+    level_ = hal::GpioLevel::High;
+    return ErrorCode::Ok;
+}
 
-    bool MockGpio::set_high() noexcept
+[[nodiscard]] MockGpio::ErrorCode MockGpio::set_low() noexcept
+{
+    if (!this->is_initialized())
     {
-        if (!is_initialized() || mode_ != robot_foc::hal::GpioMode::Output)
-        {
-            return false;
-        }
-
-        level_ = robot_foc::hal::GpioLevel::High;
-        return true;
+        return ErrorCode::ErrorNotReady;
     }
-
-    bool MockGpio::set_low() noexcept
+    if (mode_ != hal::GpioMode::OutputPushPull && mode_ != hal::GpioMode::OutputOpenDrain)
     {
-        if (!is_initialized() || mode_ != robot_foc::hal::GpioMode::Output)
-        {
-            return false;
-        }
-
-        level_ = robot_foc::hal::GpioLevel::Low;
-        return true;
+        return ErrorCode::ErrorUnsupported;
     }
+    level_ = hal::GpioLevel::Low;
+    return ErrorCode::Ok;
+}
 
-    bool MockGpio::set_mode(robot_foc::hal::GpioMode mode) noexcept
+[[nodiscard]] MockGpio::ErrorCode MockGpio::set_mode(hal::GpioMode mode) noexcept
+{
+    if (!this->is_initialized())
     {
-        if (!is_initialized())
-        {
-            return false;
-        }
-
-        mode_ = mode;
-        return true;
+        return ErrorCode::ErrorNotReady;
     }
+    mode_ = mode;
+    return ErrorCode::Ok;
+}
 
-    bool MockGpio::read_level(robot_foc::hal::GpioLevel& out_level) const noexcept
+[[nodiscard]] MockGpio::ErrorCode MockGpio::read_level(hal::GpioLevel& out_level) const noexcept
+{
+    if (!this->is_initialized())
     {
-        if (!is_initialized())
-        {
-            return false;
-        }
-
-        out_level = level_;
-        return true;
+        return ErrorCode::ErrorNotReady;
     }
+    out_level = level_;
+    return ErrorCode::Ok;
+}
+
+void MockGpio::mock_force_input_level(hal::GpioLevel lv) noexcept
+{
+    // 只有输入模式才允许外部注入电平；输出引脚电平由set_high/set_low控制
+    if (mode_ == hal::GpioMode::Input)
+    {
+        level_ = lv;
+    }
+}
 
 } // namespace robot_foc::drivers

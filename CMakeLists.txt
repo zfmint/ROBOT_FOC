@@ -16,35 +16,13 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 ##############################################################################
-# PC本机编译编译选项配置块
-# NOT CMAKE_CROSSCOMPILING：CMake内置变量
-#  - Windows/Linux本机编译：CMAKE_CROSSCOMPILING=OFF，进入本分支
-#  - ARM工具链交叉编译STM32：CMAKE_CROSSCOMPILING=ON，跳过本块
-# 参考 CODING_STANDARD.md：开启严格警告，尽早发现代码隐患
-##############################################################################
-if(NOT CMAKE_CROSSCOMPILING)
-    # CMAKE_CXX_COMPILER_ID：获取当前C++编译器标识
-    # STREQUAL "MSVC"：判断当前编译器是否微软MSVC(Visual Studio编译器)
-    if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-        # add_compile_options：添加全局编译选项，对后续所有目标生效
-        # /utf-8：源码文件使用UTF‑8编码，避免中文注释乱码
-        # /W4：MSVC最高警告等级(生产项目建议W4，对应规范要求)
-        # /permissive‑：关闭MSVC非标准扩展，严格遵循C++标准
-        add_compile_options(/utf-8 /W4 /permissive-)
-    else()
-        # GCC / Clang 编译器（MinGW、Linux GCC）
-        # -Wall：开启基础警告；-Wextra：开启额外扩展警告；-Wpedantic：严格标准合规检查
-        add_compile_options(-Wall -Wextra -Wpedantic)
-    endif()
-endif()
-
-##############################################################################
 # robot_hal：生产静态库目标，HAL抽象层 + 设备驱动层核心业务代码
-# 注意：Header‑only模板头文件（例如 byte_ring_buffer.hpp）
-#       不需要写在add_library源文件列表，仅需要放置在Inc目录，通过include路径暴露
-#       模板实现全部写在.hpp头文件，无对应的.cpp实现文件
+# @brief 生产库，用于STM32固件，禁用C++异常、RTTI
+# @details
+#  Header‑only模板头文件（byte_ring_buffer.hpp、mock_uart.hpp）
+#  不需要写在add_library源文件列表，仅放置在Inc目录，通过include路径暴露
+#  模板实现全部写在.hpp头文件，无对应的.cpp实现文件
 ##############################################################################
-# add_library：创建库目标；STATIC代表静态库（*.lib / *.a）
 add_library(robot_hal STATIC
     # Src/HAL：HAL抽象层实现文件
     Src/HAL/peripheral.cpp
@@ -53,26 +31,42 @@ add_library(robot_hal STATIC
     Src/DRIVERS/mock_gpio.cpp
 )
 
-# target_include_directories：为目标设置头文件搜索目录
-# PUBLIC：
-#   1. robot_hal库本身编译时，可以搜索该目录
-#   2. 任何target_link_libraries链接robot_hal的目标，编译期自动继承该头文件搜索路径
-# 生产库robot_hal只对外暴露项目Inc；test/Inc是测试专用头文件，禁止注入生产库
+## @brief robot_hal编译选项：生产库关闭异常、RTTI，适配STM32嵌入式
+if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+    # robot_hal独立编译选项，关闭C++异常+RTTI
+    target_compile_options(robot_hal PRIVATE
+        /utf-8
+        /W4
+        /permissive-
+        /EHs-c-
+        /GR-
+    )
+else()
+    target_compile_options(robot_hal PRIVATE
+        -Wall -Wextra -Wpedantic
+        -fno-exceptions
+        -fno-rtti
+    )
+endif()
+
 target_include_directories(robot_hal
     PUBLIC
         ${PROJECT_SOURCE_DIR}/Inc
 )
-# 变量说明：
-# ${PROJECT_SOURCE_DIR}：cmake内置变量，代表项目根目录（CMakeLists.txt所在目录）
 
 ##############################################################################
-# pc_test_peripheral：PC平台单元测试可执行程序
-# 仅本机PC编译时构建；交叉编译STM32固件时跳过，不编译PC测试代码
-# 原因：测试代码包含main函数、控制台输出，不能编译进单片机固件
+# pc_unit_test：PC平台单元测试可执行程序
+# @brief 仅PC本机编译时构建；交叉编译STM32固件时跳过，不编译PC测试代码
+# @details
+#  测试程序包含main函数、控制台std输出，不可编译进单片机固件镜像。
+#  依赖robot_hal静态库，加载HAL抽象层与Mock模拟驱动用于单元验证。
+# @note
+#  PRIVATE头文件路径仅作用于当前测试目标，不会向外传递到其它依赖目标；
+#  生产代码无法访问test/Inc下测试专用头文件，实现测试与业务代码隔离。
 ##############################################################################
 if(NOT CMAKE_CROSSCOMPILING)
-    # add_executable：生成可执行程序pc_test_peripheral
-    add_executable(pc_test_peripheral
+    # add_executable：生成可执行程序pc_unit_test
+    add_executable(pc_unit_test
         # 测试程序入口main
         test/pc_test_main.cpp
         # 虚拟外设基础测试
@@ -83,18 +77,38 @@ if(NOT CMAKE_CROSSCOMPILING)
         test/Src/test_byte_ring_buffer.cpp
         # 串口单元测试
         test/Src/test_mock_uart.cpp
+        # 错误码单元测试
+        test/Src/test_error_code.cpp
     )
 
-    # PRIVATE：头文件路径仅当前pc_test_peripheral编译时生效
-    # 不会传递给任何链接pc_test_peripheral的其他目标
-    # test/Inc存放测试辅助头文件，只给测试程序使用，不对外扩散
-    target_include_directories(pc_test_peripheral
+    ## @brief 测试目标私有头文件搜索目录
+    ## @note test/Inc存放测试辅助头文件，仅pc_unit_test可见，禁止污染生产库
+    target_include_directories(pc_unit_test
         PRIVATE
             ${PROJECT_SOURCE_DIR}/test/Inc
     )
 
-    # target_link_libraries：库链接关系配置
-    # PRIVATE：pc_test_peripheral链接robot_hal；
-    #          如果别的目标链接pc_test_peripheral，不会自动链接robot_hal
-    target_link_libraries(pc_test_peripheral PRIVATE robot_hal)
+    ## @brief 链接生产静态库robot_hal
+    ## @note PRIVATE：仅当前测试目标使用robot_hal，不向外传递依赖
+    target_link_libraries(pc_unit_test PRIVATE robot_hal)
+
+    ## @brief 设置可执行产物输出目录
+    ## @details 编译生成的pc_unit_test.exe放置于 build/bin，方便统一管理二进制
+    set_target_properties(pc_unit_test PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+    )
+
+    ## @brief PC测试程序：MSVC开启异常，支持std::cout控制台输出
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+        target_compile_options(pc_unit_test PRIVATE
+            /utf-8
+            /W4
+            /permissive-
+            /EHsc
+        )
+    else()
+        target_compile_options(pc_unit_test PRIVATE
+            -Wall -Wextra -Wpedantic
+        )
+    endif()
 endif()

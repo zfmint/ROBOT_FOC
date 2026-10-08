@@ -13,7 +13,7 @@
  *      5. 禁止拷贝、禁止移动，避免栈数组拷贝造成严重bug；
  *  依赖：仅cstddef cstdint，不依赖FreeRTOS，不依赖其他业务组件
  * @author Robot_FOC Project
- * @warning 若跨中断/主循环并发访问本缓冲区，push/pop/empty/full/size/clear 必须使用中断临界区保护
+ * @warning 若跨中断/主循环并发访问本缓冲区，push/pop/peek/empty/full/size/clear 必须使用中断临界区保护
  */
 
 #ifndef ROBOT_FOC_HAL_BYTE_RING_BUFFER_HPP
@@ -25,12 +25,13 @@
 namespace robot_foc::hal
 {
     template<std::size_t Capacity>
+
     class ByteRingBuffer
     {
-    //模板参数必须>=2，可以存2字节。
-    static_assert(Capacity >= 2U,"ByteRingBuffer: Capacity must >= 2");
-    
-    private: 
+    // 模板参数必须 >= 2，可以存 2 字节
+    static_assert(Capacity >= 2U, "ByteRingBuffer: Capacity must >= 2");
+
+    private:
         /// @brief 底层存储数组
         std::uint8_t buf_[Capacity]{};
         /// @brief 下一次写入的位置下标
@@ -111,7 +112,7 @@ namespace robot_foc::hal
 
         /**
          * @brief 缓冲区头部弹出一个字节
-         * @param out_byte 输出读到的字节
+         * @param out_byte [out] 输出读到的字节，仅返回true时输出有效
          * @return true 读取成功，false 缓冲区为空，读取失败
          */
         [[nodiscard]] bool pop(std::uint8_t& out_byte) noexcept
@@ -155,4 +156,4 @@ namespace robot_foc::hal
     };
 } // namespace robot_foc::hal
 
-#endif
+#endif // ROBOT_FOC_HAL_BYTE_RING_BUFFER_HPP
