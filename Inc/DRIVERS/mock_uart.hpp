@@ -6,6 +6,7 @@
 #ifndef ROBOT_FOC_DRIVERS_MOCK_UART_HPP
 #define ROBOT_FOC_DRIVERS_MOCK_UART_HPP
 
+#include <type_traits>
 #include <cstdint>
 #include <cstddef>
 
@@ -167,6 +168,13 @@ namespace robot_foc::drivers
             return this->push_rx(byte);
         }
     };
+
+    // 编译期校验 MockUart：禁止拷贝、禁止移动
+    static_assert(!std::is_copy_constructible_v<robot_foc::drivers::MockUart<8U, 8U>>);
+    static_assert(!std::is_copy_assignable_v<robot_foc::drivers::MockUart<8U, 8U>>);
+    static_assert(!std::is_move_constructible_v<robot_foc::drivers::MockUart<8U, 8U>>);
+    static_assert(!std::is_move_assignable_v<robot_foc::drivers::MockUart<8U, 8U>>);
+
 } // namespace robot_foc::drivers
 
 #endif // ROBOT_FOC_DRIVERS_MOCK_UART_HPP

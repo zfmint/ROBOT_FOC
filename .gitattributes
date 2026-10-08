@@ -1,0 +1,7 @@
+# 所有C/C++头文件源文件，强制使用LF
+*.h       text eol=lf
+*.hpp     text eol=lf
+*.c       text eol=lf
+*.cpp     text eol=lf
+*.cmake   text eol=lf
+CMakeLists.txt text eol=lf

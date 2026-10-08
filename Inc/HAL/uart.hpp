@@ -24,6 +24,7 @@
 #ifndef ROBOT_FOC_HAL_UART_HPP
 #define ROBOT_FOC_HAL_UART_HPP
 
+#include <type_traits>
 #include <cstdint>
 #include <cstddef>
 
@@ -257,6 +258,13 @@ namespace robot_foc::hal
          */
         [[nodiscard]] virtual ErrorCode send_bytes(const std::uint8_t* data, std::size_t len) noexcept = 0;
     };
+
+    // 编译期校验 Uart<8U>：禁止拷贝、禁止移动
+    static_assert(!std::is_copy_constructible_v<robot_foc::hal::Uart<8U>>);
+    static_assert(!std::is_copy_assignable_v<robot_foc::hal::Uart<8U>>);
+    static_assert(!std::is_move_constructible_v<robot_foc::hal::Uart<8U>>);
+    static_assert(!std::is_move_assignable_v<robot_foc::hal::Uart<8U>>);
+
 } // namespace robot_foc::hal
 
 #endif // ROBOT_FOC_HAL_UART_HPP

@@ -1,27 +1,25 @@
 /**
- * @brief MockGpio 单元测试函数
- * @details 验证MockGpio完整生命周期、configure校验、模式切换、电平读写、多态行为；
+ * @brief GPIO通用行为测试，仅依赖Gpio基类引用，支持任意Gpio派生实现（Mock/Real）
+ * @details 验证标准HAL生命周期、configure校验、模式切换、电平读写、多态行为；
  *          使用EXPECT，单条失败继续跑完剩余用例，最后统一汇总失败计数
+ * @param gpio 基类引用，外部传入具体实例
  */
-#include "DRIVERS/mock_gpio.hpp"
-#include "test_helper.hpp"
-#include "COMMON/error_code.hpp"
 
-bool test_mock_gpio()
+#include "test_helper.hpp"
+#include "HAL/gpio.hpp"
+#include "COMMON/error_code.hpp"
+#include "DRIVERS/mock_gpio.hpp"
+
+bool run_gpio_common_tests(robot_foc::hal::Gpio& gpio)
 {
-    using robot_foc::drivers::MockGpio;
     using robot_foc::hal::Gpio;
     using robot_foc::hal::GpioConfig;
     using robot_foc::hal::GpioLevel;
     using robot_foc::hal::GpioMode;
     using robot_foc::hal::GpioPull;
-    using robot_foc::hal::GpioPin;
     using robot_foc::common::ErrorCode;
 
     const std::size_t fail_start = test_failure_count;
-
-    // 构造MockGPIO实例，绑定引脚5；构造仅创建对象，不执行初始化
-    MockGpio gpio{GpioPin{5U}};
     GpioLevel level{GpioLevel::Low};
 
     // ========== 未初始化状态测试 ==========
@@ -36,7 +34,6 @@ bool test_mock_gpio()
     EXPECT(ret_mode_pre == ErrorCode::ErrorNotReady, "GPIO pre-init set_mode fails");
 
     // ========== configure配置校验 ==========
-    // 保存原始默认配置
     // 合法配置：推挽输出，初始高电平
     GpioConfig valid_cfg{
         GpioMode::OutputPushPull,
@@ -69,12 +66,6 @@ bool test_mock_gpio()
     auto ret_set_high_input = gpio.set_high();
     EXPECT(ret_set_high_input == ErrorCode::ErrorUnsupported, "GPIO input mode rejects set_high");
 
-    // Mock专用：外部注入输入引脚电平
-    gpio.mock_force_input_level(GpioLevel::High);
-    auto ret_read_inject = gpio.read_level(level);
-    EXPECT(ret_read_inject == ErrorCode::Ok,"GPIO read_level after inject returns Ok");
-    EXPECT(level == GpioLevel::High, "GPIO input pin level injected from outside");
-
     // 切回推挽输出模式
     auto ret_set_mode_out = gpio.set_mode(GpioMode::OutputPushPull);
     EXPECT(ret_set_mode_out == ErrorCode::Ok, "GPIO output push-pull mode succeeds");
@@ -94,15 +85,15 @@ bool test_mock_gpio()
     EXPECT(ret_read_l == ErrorCode::Ok, "GPIO read_level after set_low succeeds");
     EXPECT(level == GpioLevel::Low, "GPIO level is low");
 
-    // ========== 基类指针多态测试（验证HAL抽象接口） ==========
-    Gpio* base_gpio{&gpio};
-    auto ret_poly_mode = base_gpio->set_mode(GpioMode::OutputPushPull);
+    // ========== 基类引用多态测试（验证HAL抽象接口） ==========
+    Gpio& base_gpio_ref = gpio;
+    auto ret_poly_mode = base_gpio_ref.set_mode(GpioMode::OutputPushPull);
     EXPECT(ret_poly_mode == ErrorCode::Ok, "GPIO polymorphic set_mode succeeds");
 
-    auto ret_poly_high = base_gpio->set_high();
+    auto ret_poly_high = base_gpio_ref.set_high();
     EXPECT(ret_poly_high == ErrorCode::Ok, "GPIO polymorphic set_high succeeds");
 
-    auto ret_poly_read = base_gpio->read_level(level);
+    auto ret_poly_read = base_gpio_ref.read_level(level);
     EXPECT(ret_poly_read == ErrorCode::Ok, "GPIO polymorphic read_level succeeds");
     EXPECT(level == GpioLevel::High, "GPIO polymorphic level is high");
 
@@ -128,6 +119,31 @@ bool test_mock_gpio()
     EXPECT(ret_reinit_no_cfg == ErrorCode::Ok, "GPIO re-init without re-configure after deinit");
     EXPECT(gpio.get_config().mode == GpioMode::OutputPushPull, "GPIO config preserved after deinit");
 
-    const std::size_t fail_end = test_failure_count;
-    return (fail_end == fail_start);
+    return test_failure_count == fail_start;
+}
+
+/**
+ * @brief MockGpio 单元测试入口
+ * @details 实例创建、Mock专属注入逻辑；调用通用GPIO行为测试
+ */
+bool test_mock_gpio()
+{
+    using robot_foc::drivers::MockGpio;
+    using robot_foc::hal::GpioPin;
+    using robot_foc::hal::GpioLevel;
+
+    const std::size_t fail_start = test_failure_count;
+
+    // 【Setup：实例构造，仅Mock相关】
+    MockGpio gpio{GpioPin{5U}};
+
+    // ===== Mock专属操作：外部输入电平注入，不属于通用HAL行为，放在这里 =====
+    gpio.mock_force_input_level(GpioLevel::High);
+
+    // 调用通用测试，传入基类引用
+    run_gpio_common_tests(gpio);
+
+    // 可选：可在此增加少量仅Mock特有的断言（不属于通用GPIO契约）
+
+    return test_failure_count == fail_start;
 }

@@ -17,6 +17,7 @@
 #ifndef ROBOT_FOC_HAL_GPIO_HPP
 #define ROBOT_FOC_HAL_GPIO_HPP
 
+#include <type_traits>
 #include <cstdint>
 
 #include "HAL/peripheral.hpp"
@@ -167,6 +168,12 @@ namespace robot_foc::hal
             return pin_;
         }
     };
+
+    // 编译期校验Gpio：禁止拷贝、禁止移动
+    static_assert(!std::is_copy_constructible_v<robot_foc::hal::Gpio>);
+    static_assert(!std::is_copy_assignable_v<robot_foc::hal::Gpio>);
+    static_assert(!std::is_move_constructible_v<robot_foc::hal::Gpio>);
+    static_assert(!std::is_move_assignable_v<robot_foc::hal::Gpio>);
 
 } // namespace robot_foc::hal
 

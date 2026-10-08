@@ -17,6 +17,8 @@
 #ifndef ROBOT_FOC_DRIVERS_MOCK_GPIO_HPP
 #define ROBOT_FOC_DRIVERS_MOCK_GPIO_HPP
 
+#include <type_traits>
+
 #include "HAL/gpio.hpp"
 
 namespace robot_foc::drivers
@@ -53,6 +55,13 @@ namespace robot_foc::drivers
         /// @brief 测试辅助接口：模拟外部硬件改变输入引脚电平，仅单元测试调用
         void mock_force_input_level(robot_foc::hal::GpioLevel lv) noexcept;
     };
+
+    // 编译期校验 MockGpio：禁止拷贝、禁止移动
+    static_assert(!std::is_copy_constructible_v<robot_foc::drivers::MockGpio>);
+    static_assert(!std::is_copy_assignable_v<robot_foc::drivers::MockGpio>);
+    static_assert(!std::is_move_constructible_v<robot_foc::drivers::MockGpio>);
+    static_assert(!std::is_move_assignable_v<robot_foc::drivers::MockGpio>);
+
 } // namespace robot_foc::drivers
 
 #endif // ROBOT_FOC_DRIVERS_MOCK_GPIO_HPP

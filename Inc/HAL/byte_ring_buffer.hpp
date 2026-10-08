@@ -21,6 +21,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <type_traits>
 
 namespace robot_foc::hal
 {
@@ -154,6 +155,12 @@ namespace robot_foc::hal
             count_ = 0U;
         }
     };
+    
+    // 编译期校验 ByteRingBuffer<8U>：禁止拷贝、禁止移动
+    static_assert(!std::is_copy_constructible_v<robot_foc::hal::ByteRingBuffer<8U>>);
+    static_assert(!std::is_copy_assignable_v<robot_foc::hal::ByteRingBuffer<8U>>);
+    static_assert(!std::is_move_constructible_v<robot_foc::hal::ByteRingBuffer<8U>>);
+    static_assert(!std::is_move_assignable_v<robot_foc::hal::ByteRingBuffer<8U>>);
 } // namespace robot_foc::hal
 
 #endif // ROBOT_FOC_HAL_BYTE_RING_BUFFER_HPP
