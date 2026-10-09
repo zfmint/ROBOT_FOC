@@ -96,11 +96,13 @@ namespace robot_foc::hal
             return true;
         }
 
-        /// @brief 传入UART配置参数
-        /// @param cfg
-        /// @retval ErrorCode::Ok 配置保存成功
-        /// @retval ErrorCode::ErrorAlreadyInit 外设已初始化，禁止修改
-        /// @retval ErrorCode::ErrorInvalidParam 配置参数非法
+        /**
+         * @brief 传入UART配置参数
+         * @param cfg
+         * @return ErrorCode::Ok 配置保存成功
+         * @return ErrorCode::ErrorAlreadyInit 外设已初始化，禁止修改
+         * @return ErrorCode::ErrorInvalidParam 配置参数非法
+         */
         [[nodiscard]] ErrorCode set_config(const UartConfig& cfg) noexcept
         {
             // 已经初始化，禁止修改配置

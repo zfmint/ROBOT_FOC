@@ -68,30 +68,30 @@ target_include_directories(robot_hal
 #  依赖robot_hal静态库，加载HAL抽象层与Mock模拟驱动用于单元验证。
 # @note
 #  PRIVATE头文件路径仅作用于当前测试目标，不会向外传递到其它依赖目标；
-#  生产代码无法访问test/Inc下测试专用头文件，实现测试与业务代码隔离。
+#  生产代码无法访问Test/Inc下测试专用头文件，实现测试与业务代码隔离。
 ##############################################################################
 if(NOT CMAKE_CROSSCOMPILING)
     # add_executable：生成可执行程序pc_unit_test
     add_executable(pc_unit_test
         # 测试程序入口main
-        test/pc_test_main.cpp
+        Test/pc_test_main.cpp
         # 虚拟外设基础测试
-        test/Src/test_dummy_periph.cpp
+        Test/Src/test_dummy_periph.cpp
         # MockGpio单元测试
-        test/Src/test_mock_gpio.cpp
+        Test/Src/test_mock_gpio.cpp
         # 环形缓冲区单元测试
-        test/Src/test_byte_ring_buffer.cpp
+        Test/Src/test_byte_ring_buffer.cpp
         # 串口单元测试
-        test/Src/test_mock_uart.cpp
+        Test/Src/test_mock_uart.cpp
         # 错误码单元测试
-        test/Src/test_error_code.cpp
+        Test/Src/test_error_code.cpp
     )
 
     ## @brief 测试目标私有头文件搜索目录
-    ## @note test/Inc存放测试辅助头文件，仅pc_unit_test可见，禁止污染生产库
+    ## @note Test/Inc存放测试辅助头文件，仅pc_unit_test可见，禁止污染生产库
     target_include_directories(pc_unit_test
         PRIVATE
-            ${PROJECT_SOURCE_DIR}/test/Inc
+            ${PROJECT_SOURCE_DIR}/Test/Inc
     )
 
     ## @brief 链接生产静态库robot_hal
