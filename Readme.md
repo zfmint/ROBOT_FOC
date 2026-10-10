@@ -2,7 +2,7 @@
 
 基于 STM32F4 与 FreeRTOS 的机器人移动底盘嵌入式控制系统。项目采用“PC 端 C++ 先实现和验证，再移植到 STM32”的开发流程，目标覆盖 FOC 电机控制、差速底盘运动学、车载档位交互、故障保护、外设驱动封装和实时多任务调度。
 
-当前处于第一阶段“嵌入式 C++ 架构筑基”，已经完成 Day1～Day7。Python 自动化测试暂缓，目前使用 PC C++ 单元测试验证基础组件。
+当前处于第一阶段“嵌入式 C++ 架构筑基”，已经完成 Day1～Day8。Python 自动化测试暂缓，目前使用 PC C++ 单元测试验证基础组件。
 
 ## 开发原则
 
@@ -104,7 +104,7 @@ cmake --build build --config Debug --clean-first
 
 ## 编译约束
 
-生产静态库 `robot_hal`：
+生产核心静态库 `robot_hal_core`，PC Mock 静态库 `robot_hal_mock`：
 
 - MSVC：`/W4 /permissive- /EHs-c- /GR-`
 - GCC/Clang：`-Wall -Wextra -Wpedantic -fno-exceptions -fno-rtti`
@@ -122,11 +122,14 @@ PC 测试程序需要控制台标准库支持，因此 MSVC 测试目标单独�
 | Day5 | 通用错误码和基础单位类型 | 已完成 |
 | Day6 | 资源所有权与严格编译约束 | 已完成 |
 | Day7 | 跨层依赖、编译期资源语义和接口替换检查 | 已完成 |
-| Day8 | 第一阶段评审与文档整理 | 待完成 |
+| Day8 | 第一阶段评审与文档整理 | 已完成 |
 
-下一步是完成 Day8 阶段评审文档，然后进入 Day9 PID 控制器的 PC 端实现。
+下一步进入 Day9 PID 控制器的 PC 端实现。
 
 ## 文档
 
 - [嵌入式 C++ 编码规范](CODING_STANDARD.md)
+- [架构说明](docs/architecture.md)
+- [CMake 构建说明](docs/build_guide.md)
+- [第一阶段评审记录](docs/stage1_review.md)
 

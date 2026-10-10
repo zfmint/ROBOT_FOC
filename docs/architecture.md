@@ -184,7 +184,7 @@ RTOS / 应用集成层（规划）
  禁止拷贝、移动，编译器校验\
 
 5. MockGpio、MockUart
-`MockGpio` 与 `MockUart` 用于 PC 行为验证，不代表 STM32 真实寄存器驱动。当前 `MockGpio` 源文件仍编入 `robot_hal`，后续可拆分为独立测试目标。
+`MockGpio` 与 `MockUart` 用于 PC 行为验证，不代表 STM32 真实寄存器驱动。当前 CMake 已将 MockGpio 放入独立的 `robot_hal_mock` 目标，固件只需链接 `robot_hal_core`。
 
 ## 六、设计约束清单
 
@@ -194,7 +194,7 @@ RTOS / 应用集成层（规划）
 
 ```text
 Robot_FOC/
-├── CMakeLists.txt              # 构建脚本：定义 robot_hal 库与 pc_unit_test 测试目标
+├── CMakeLists.txt              # 构建脚本：定义 robot_hal_core、robot_hal_mock 与 pc_unit_test 目标
 ├── CODING_STANDARD.md          # 编码规范（命名、注释、接口约束）
 ├── DEVELOPMENT_PLAN.md         # 开发计划（未上传 git）
 ├── prompt.txt                  # AI 检索提示词工程（未上传 git）
@@ -205,7 +205,9 @@ Robot_FOC/
 ├── build/                      # CMake 构建产物目录（不入库）
 │
 ├── docs/                       # 架构和阶段评审文档
-│   └── architecture.md         # 架构说明文档
+│   ├── architecture.md         # 架构说明文档
+│   ├── build_guide.md          # CMake、PC 测试和交叉编译说明
+│   └── stage1_review.md        # Day1～Day8 阶段评审、问题和决策记录
 │
 ├── Inc/                        # 头文件目录（全项目声明）
 │   ├── ALGORITHM/              # 算法层头文件：规划目录，当前尚无实现
@@ -231,8 +233,9 @@ Robot_FOC/
 
 当前 CMake 定义两个目标：
 
-- `robot_hal`：生产静态库，MSVC 使用 `/W4 /permissive- /EHs-c- /GR-`；GCC/Clang 使用严格警告并关闭异常、RTTI。
-- `pc_unit_test`：非交叉编译时生成的 PC 测试程序，链接 `robot_hal`，并使用测试目录中的测试辅助代码。
+- `robot_hal_core`：生产核心静态库，MSVC 使用 `/W4 /permissive- /EHs-c- /GR-`；GCC/Clang 使用严格警告并关闭异常、RTTI。
+- `robot_hal_mock`：非交叉编译时生成的 PC Mock 驱动静态库。
+- `pc_unit_test`：非交叉编译时生成的 PC 测试程序，链接 `robot_hal_core` 和 `robot_hal_mock`，并使用测试目录中的测试辅助代码。
 
 PC 验证命令：
 
@@ -244,3 +247,9 @@ cmake --build build --config Debug --clean-first
 
 测试失败时返回非零退出码。Python、pybind11 和 pytest 当前尚未接入构建流程，不能将其描述为已完成的自动化测试能力。
 
+## 九、阶段状态与待办
+
+- Day1～Day7：PC 端基础架构、GPIO、环形缓冲区、UART、错误码、编译约束和跨层依赖检查已完成。
+- Day8：架构说明、CMake/PC 构建说明、阶段问题清单和技术决策记录已建立。
+- Day9 以后：实现 PID、滤波、FOC、运动学、状态机，再进入 STM32 和 FreeRTOS 移植。
+- `Inc/ALGORITHM`、`Src/ALGORITHM`、`Inc/RTOS`、`Src/RTOS` 当前仅为规划目录，不应视为已实现功能。
