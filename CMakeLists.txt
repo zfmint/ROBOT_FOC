@@ -34,7 +34,7 @@ add_library(robot_hal STATIC
     Src/HAL/peripheral.cpp
     Src/HAL/gpio.cpp
     # Src/DRIVERS：模拟驱动实现文件(MockGpio)
-    Src/DRIVERS/mock_gpio.cpp
+
 )
 
 ## @brief robot_hal编译选项：生产库关闭异常、RTTI，适配STM32嵌入式
