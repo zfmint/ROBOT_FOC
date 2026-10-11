@@ -14,6 +14,7 @@
  * @author Robot_FOC Project
  * @warning 本类为抽象基类，不可直接实例化；必须由硬件实现类或Mock模拟类继承实现
  */
+
 #ifndef ROBOT_FOC_HAL_GPIO_HPP
 #define ROBOT_FOC_HAL_GPIO_HPP
 

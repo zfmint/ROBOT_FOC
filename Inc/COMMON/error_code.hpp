@@ -4,6 +4,7 @@
  * @details 跨模块统一返回状态；多种失败场景禁止使用裸bool；
  *          调试辅助函数 error_code_to_str 为inline，可直接在头文件。
  */
+
 #ifndef ROBOT_FOC_COMMON_ERROR_CODE_HPP
 #define ROBOT_FOC_COMMON_ERROR_CODE_HPP
 
