@@ -33,6 +33,9 @@ add_library(robot_hal_core STATIC
 
     # Src/COMMON 公共组件实现
     # Src/COMMON/xxx.cpp
+
+    #ALGORITHM算法实现
+    Src/ALGORITHM/pid.cpp
 )
 
 ## robot_hal_core编译选项：生产库关闭异常、RTTI，适配STM32嵌入式
@@ -111,6 +114,8 @@ if(NOT CMAKE_CROSSCOMPILING)
         Test/Src/test_mock_uart.cpp
         # 错误码单元测试
         Test/Src/test_error_code.cpp
+        # 位置式PID单元测试
+        Test/Src/test_positional_pid.cpp
     )
 
     ## @brief 测试目标私有头文件搜索目录

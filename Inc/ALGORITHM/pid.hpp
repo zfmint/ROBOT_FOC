@@ -77,31 +77,31 @@ namespace robot_foc::algorithm
          * @brief 获取kp
          * @return kp_
          */
-        [[nodiscard]] float get_kp()const noexcept;
+        [[nodiscard]] float get_kp() const noexcept;
 
         /**
          * @brief 获取ki
          * @return ki_
          */
-        [[nodiscard]] float get_ki()const noexcept;
+        [[nodiscard]] float get_ki() const noexcept;
 
         /**
          * @brief 获取kd
          * @return kd_
          */
-        [[nodiscard]] float get_kd()const noexcept;
+        [[nodiscard]] float get_kd() const noexcept;
 
         /**
          * @brief 获取积分累积值
          * @return integral_
          */
-        [[nodiscard]] float get_integral()const noexcept;
+        [[nodiscard]] float get_integral() const noexcept;
 
         /**
          * @brief 获取上一次误差
          * @return last_err_
          */
-        [[nodiscard]] float get_last_err()const noexcept;
+        [[nodiscard]] float get_last_err() const noexcept;
     };
     
     /**
@@ -150,37 +150,37 @@ namespace robot_foc::algorithm
          * @brief 获取kp
          * @return kp_
          */
-        [[nodiscard]] float get_kp()const noexcept;
+        [[nodiscard]] float get_kp() const noexcept;
 
         /**
          * @brief 获取ki
          * @return ki_
          */
-        [[nodiscard]] float get_ki()const noexcept;
+        [[nodiscard]] float get_ki() const noexcept;
 
         /**
          * @brief 获取kd
          * @return kd_
          */
-        [[nodiscard]] float get_kd()const noexcept;
+        [[nodiscard]] float get_kd() const noexcept;
 
         /**
          * @brief 获取err1
          * @return err1_
          */
-        [[nodiscard]] float get_err1()const noexcept;
+        [[nodiscard]] float get_err1() const noexcept;
 
         /**
          * @brief 获取err2
          * @return err2_
          */
-        [[nodiscard]] float get_err2()const noexcept;
+        [[nodiscard]] float get_err2() const noexcept;
 
         /**
          * @brief 获取err3
          * @return err3_
          */
-        [[nodiscard]] float get_err3()const noexcept;
+        [[nodiscard]] float get_err3() const noexcept;
 
 
 

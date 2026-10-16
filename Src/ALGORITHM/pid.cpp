@@ -40,9 +40,9 @@ namespace robot_foc::algorithm
         // 仅当预输出饱和，且当前误差会继续加重饱和时，禁止积分累积；
         // 若饱和但误差反向，允许积分增减，实现快速退饱和；搭配积分限幅兜底。
         bool enable_integral = true;
-        if (pre_out >= out_min_ && err > 0.0F)
+        if (pre_out >= out_max_ && err > 0.0F)
         {
-            // 正向输出饱和，误差仍为负，继续累加会加深积分饱和，禁止积分
+            // 正向输出饱和，误差仍为正，继续累加会加深积分饱和，禁止积分
             enable_integral = false;
         }
         else if (pre_out <= out_min_ && err < 0.0F)
