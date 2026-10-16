@@ -36,13 +36,25 @@ namespace robot_foc::algorithm
         const float d = kd_ * (err - last_err_);
         // 使用【旧的积分值】算出预输出（不叠加本次积分增量）
         const float pre_out = p + (ki_ * integral_) + d;
-        // 抗积分饱和判断：预输出没有碰到输出限幅，积累本次误差
-        if (pre_out > out_min_ && pre_out < out_max_)
+        // 抗积分饱和策略：方向感知条件积分
+        // 仅当预输出饱和，且当前误差会继续加重饱和时，禁止积分累积；
+        // 若饱和但误差反向，允许积分增减，实现快速退饱和；搭配积分限幅兜底。
+        bool enable_integral = true;
+        if (pre_out >= out_min_ && err > 0.0F)
         {
-            // 累加误差
+            // 正向输出饱和，误差仍为负，继续累加会加深积分饱和，禁止积分
+            enable_integral = false;
+        }
+        else if (pre_out <= out_min_ && err < 0.0F)
+        {
+            // 负向输出饱和，误差仍为负，继续累加会加深积分饱和，禁止积分
+            enable_integral = false;
+        }
+        if (enable_integral)
+        {
             integral_ = integral_ + err;
         }
-        // 积分限幅：强制把积分项限制在上下限内
+        //积分限幅：强制把积分项限制在上下限内，兜底保护
         if (integral_ > integral_max_)
         {
             integral_ = integral_max_;
@@ -77,6 +89,31 @@ namespace robot_foc::algorithm
         kp_ = kp;
         ki_ = ki;
         kd_ = kd;
+    }
+
+    [[nodiscard]] float PositionalPid::get_kp() const noexcept
+    {
+        return kp_;
+    }
+
+    [[nodiscard]] float PositionalPid::get_ki() const noexcept
+    {
+        return ki_;
+    }
+
+    [[nodiscard]] float PositionalPid::get_kd() const noexcept
+    {
+        return kd_;
+    }
+
+    [[nodiscard]] float PositionalPid::get_integral() const noexcept
+    {
+        return integral_;
+    }
+
+    [[nodiscard]] float PositionalPid::get_last_err() const noexcept
+    {
+        return last_err_;
     }
 
     IncrementalPid::IncrementalPid(float kp, float ki, float kd,
@@ -125,4 +162,35 @@ namespace robot_foc::algorithm
         ki_ = ki;
         kd_ = kd;
     }
+
+    [[nodiscard]] float IncrementalPid::get_kp() const noexcept
+    {
+        return kp_;
+    }
+
+    [[nodiscard]] float IncrementalPid::get_ki() const noexcept
+    {
+        return ki_;
+    }
+
+    [[nodiscard]] float IncrementalPid::get_kd() const noexcept
+    {
+        return kd_;
+    }
+
+    [[nodiscard]] float IncrementalPid::get_err1() const noexcept
+    {
+        return err1_;
+    }
+
+    [[nodiscard]] float IncrementalPid::get_err2() const noexcept
+    {
+        return err2_;
+    }
+
+    [[nodiscard]] float IncrementalPid::get_err3() const noexcept
+    {
+        return err3_;
+    }
+
 } // namespace robot_foc::algorithm
