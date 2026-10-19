@@ -160,6 +160,8 @@ if(NOT CMAKE_CROSSCOMPILING)
         Test/Src/test_positional_pid.cpp
         # 增量式PID单元测试
         Test/Src/test_incremental_pid.cpp
+        # 滑动滤波单元测试
+        Test/Src/test_sliding_average.cpp
 
     )
 

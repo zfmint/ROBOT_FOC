@@ -36,12 +36,12 @@ namespace robot_foc::algorithm
         //浮点环形缓冲区存储历史采样
         std::array<float, Capacity> buf_{};
         //下一次写入位置索引
-        std::size_t write_index_;
+        std::size_t write_idx_{0U};
         //当前窗口有效样本计数
         std::size_t count_{0U};
         //窗口样本总和，快速计算均值
         float sum_{0.0F};
-        
+
     public:
         SlidingAverage() noexcept = default;
         ~SlidingAverage() noexcept = default;
@@ -53,15 +53,17 @@ namespace robot_foc::algorithm
         SlidingAverage& operator=(SlidingAverage&&) = delete;
 
         /**
-         * @brief 送入新采样点
-         * @param raw_val 原始采样值
-         * @return float 滑动滤波平均输出
+         * @brief 送入新采样点，更新滤波窗口并输出滤波结果
+         * @param raw_val 原始浮点采样输入；必须是有限值（非NaN/非Inf）
+         * @param [out] out 滤波后平均值；仅当返回true时有效
+         * @return true  采样有效并完成滤波，out 有效
+         * @return false 采样为 NaN/Inf，内部状态未改变，out 被置 0
          */
-        [[nodiscard]] float calculate(float raw_val) noexcept;
+        [[nodiscard]] bool calculate(float raw_val, float& out) noexcept;
 
         /**
          * @brief 重置滤波状态
-         * @details 清空缓冲区、总和、有效样本计数、写入索引
+         * @details 清空总和、有效样本计数、写入索引
          */
         void reset() noexcept;
 
@@ -69,7 +71,7 @@ namespace robot_foc::algorithm
          * @brief 获取当前窗口内有效样本数量
          * @return size_t 当前有效样本数量
          */
-        [[nodiscard]] std::size_t get_vailid_count() const noexcept;
+        [[nodiscard]] std::size_t get_valid_count() const noexcept;
 
         /**
          * @brief 获取编译期配置窗口总容量
@@ -82,22 +84,56 @@ namespace robot_foc::algorithm
     };
 
     template<std::size_t Capacity>
-    [[nodiscard]] float SlidingAverage<Capacity>::calculate(float raw_val) noexcept
+
+    [[nodiscard]] bool SlidingAverage<Capacity>::calculate(float raw_val, float& out) noexcept
     {
+        // 非有限输入：拒绝，保持内部状态完全不变
+        if (not std::isfinite(raw_val))
+        {
+            out = 0.0F;
+            return false;
+        }
+
         if (count_ < Capacity)
         {
-            //启动阶段：窗口未填满，新增样本
+            // 启动阶段：窗口未填满，新增样本
             sum_ += raw_val;
-            buf_[write_index_] = raw_val;
-            write_index_ = (write_index_ + 1U) % Capacity;
+            buf_[write_idx_] = raw_val;
+            write_idx_ = (write_idx_ + 1U) % Capacity;
             ++count_;
         }
-        
+        else
+        {
+            // 窗口已满：移除最旧样本，加入新样本
+            const float old_val = buf_[write_idx_];
+            sum_ = sum_ - old_val + raw_val;
+            buf_[write_idx_] = raw_val;
+            write_idx_ = (write_idx_ + 1U) % Capacity;
+        }
+        out = sum_ / static_cast<float>(count_);
+        return true;
     }
-    
+
+    template<std::size_t Capacity>
+    void SlidingAverage<Capacity>::reset() noexcept
+    {
+        write_idx_ = 0U;
+        count_ = 0U;
+        sum_ = 0.0F;
+    }
+
+    template<std::size_t Capacity>
+    [[nodiscard]] std::size_t SlidingAverage<Capacity>::get_valid_count() const noexcept
+    {
+        return count_;
+    }
+
+    // 编译期静态断言校验：禁止拷贝、禁止移动
+    static_assert(!std::is_copy_constructible_v<SlidingAverage<4U>>);
+    static_assert(!std::is_copy_assignable_v<SlidingAverage<4U>>);
+    static_assert(!std::is_move_constructible_v<SlidingAverage<4U>>);
+    static_assert(!std::is_move_assignable_v<SlidingAverage<4U>>);
+
 } // namespace robot_foc::algorithm
-
-
-
 
 #endif

@@ -13,6 +13,7 @@ void test_positional_pid();
 void test_positional_pid_closed();
 void test_incremental_pid();
 void test_incremental_pid_closed();
+void test_sliding_average();
 
 int main()
 {
@@ -26,6 +27,7 @@ int main()
     test_positional_pid_closed();
     test_incremental_pid();
     test_incremental_pid_closed();
+    test_sliding_average();
 
     std::cout << "\n====================================\n";
     std::cout << "Total test failed: " << test_failure_count << '\n';
