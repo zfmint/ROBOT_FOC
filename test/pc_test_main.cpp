@@ -12,6 +12,8 @@ bool test_mock_uart();
 bool test_error_code();*/
 bool test_positional_pid();
 bool test_positional_pid_closed();
+bool test_incremental_pid();
+bool test_incremental_pid_closed();
 
 int main()
 {
@@ -25,6 +27,8 @@ int main()
     (void)test_error_code();*/
     (void)test_positional_pid();
     (void)test_positional_pid_closed();
+    (void)test_incremental_pid();
+    (void)test_incremental_pid_closed();
 
     std::cout << "\n====================================\n";
     std::cout << "Total test failed: " << test_failure_count << '\n';

@@ -158,6 +158,9 @@ if(NOT CMAKE_CROSSCOMPILING)
         Test/Src/test_error_code.cpp
         # 位置式PID单元测试
         Test/Src/test_positional_pid.cpp
+        # 增量式PID单元测试
+        Test/Src/test_incremental_pid.cpp
+
     )
 
     ## @brief 链接核心库 + mock仿真库
