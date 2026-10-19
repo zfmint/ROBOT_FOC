@@ -68,7 +68,7 @@ namespace robot_foc::hal
         /** @brief 将状态从已初始化转换为未初始化。 */
         [[nodiscard]] ErrorCode mark_deinitialized() noexcept;
     };
-    
+
     //编译期校验：外设基类禁止拷贝、禁止移动，保护硬件资源所有权
     static_assert(!std::is_copy_constructible_v<robot_foc::hal::Peripheral>);
     static_assert(!std::is_copy_assignable_v<robot_foc::hal::Peripheral>);

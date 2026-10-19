@@ -43,11 +43,14 @@ namespace robot_foc::algorithm
         float sum_{0.0F};
         
     public:
-        
-        /**
-        * @param window_size 滤波窗口最大样本容量
-        */
-        explicit SlidingAverage(std::size_t window_size) noexcept;
+        SlidingAverage() noexcept = default;
+        ~SlidingAverage() noexcept = default;
+
+        //禁止拷贝、禁止移动
+        SlidingAverage(const SlidingAverage&) = delete;
+        SlidingAverage& operator=(const SlidingAverage&) = delete;
+        SlidingAverage(SlidingAverage&&) = delete;
+        SlidingAverage& operator=(SlidingAverage&&) = delete;
 
         /**
          * @brief 送入新采样点
@@ -67,7 +70,30 @@ namespace robot_foc::algorithm
          * @return size_t 当前有效样本数量
          */
         [[nodiscard]] std::size_t get_vailid_count() const noexcept;
+
+        /**
+         * @brief 获取编译期配置窗口总容量
+         * @return constexpr std::size_t 窗口最大可存储样本数
+         */
+        [[nodiscard]] constexpr std::size_t capacity() const noexcept
+        {
+            return Capacity;
+        }
     };
+
+    template<std::size_t Capacity>
+    [[nodiscard]] float SlidingAverage<Capacity>::calculate(float raw_val) noexcept
+    {
+        if (count_ < Capacity)
+        {
+            //启动阶段：窗口未填满，新增样本
+            sum_ += raw_val;
+            buf_[write_index_] = raw_val;
+            write_index_ = (write_index_ + 1U) % Capacity;
+            ++count_;
+        }
+        
+    }
     
 } // namespace robot_foc::algorithm
 

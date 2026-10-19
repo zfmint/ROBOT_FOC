@@ -61,7 +61,7 @@ Robot_FOC/
 ├── Src/
 │   ├── DRIVERS/             # Mock 驱动实现
 │   └── HAL/                 # HAL 非模板实现
-├── test/
+├── Test/
 │   ├── Inc/                 # PC 测试辅助接口
 │   ├── Src/                 # C++ 单元测试
 │   ├── pc_test_main.cpp     # PC 测试入口

@@ -9,17 +9,19 @@
  * @note 仅单元测试使用，业务代码禁止引用本文件
  */
 
-#include <cassert>
-
 #include "mock_plant.hpp"
+
+#include <cstdlib>
 
 namespace robot_foc::test
 {
-    MockFirstOrderPlant::MockFirstOrderPlant(float ts,float tau) noexcept
+    MockFirstOrderPlant::MockFirstOrderPlant(float ts, float tau) noexcept
         : y_(0.0F), ts_(ts), tau_(tau)
     {
-        assert(ts > 0.0F);
-        assert(tau > 0.0F);
+        if (!(ts > 0.0F) || !(tau > 0.0F))
+        {
+            std::abort();
+        }
     }
 
     void MockFirstOrderPlant::reset() noexcept

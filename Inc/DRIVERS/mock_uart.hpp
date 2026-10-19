@@ -66,11 +66,11 @@ namespace robot_foc::drivers
             {
                 return ret_mark;
             }
-            
+
             tx_clear();
             this->rx_clear();
             this->clear_rx_overflow();
-            
+
             return ErrorCode::Ok;
         }
 

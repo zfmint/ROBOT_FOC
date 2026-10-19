@@ -125,7 +125,7 @@ namespace robot_foc::algorithm
           delta_out_max_{delta_out_max}
     {
     }
-    
+
     float IncrementalPid::calculate(float setpoint, float feedback) noexcept
     {
         // e(k)

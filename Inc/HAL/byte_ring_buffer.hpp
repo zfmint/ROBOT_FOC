@@ -155,7 +155,7 @@ namespace robot_foc::hal
             count_ = 0U;
         }
     };
-    
+
     // 编译期校验 ByteRingBuffer<8U>：禁止拷贝、禁止移动
     static_assert(!std::is_copy_constructible_v<robot_foc::hal::ByteRingBuffer<8U>>);
     static_assert(!std::is_copy_assignable_v<robot_foc::hal::ByteRingBuffer<8U>>);

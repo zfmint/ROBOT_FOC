@@ -15,9 +15,8 @@
  * @note 仅单元测试使用，不编译进MCU固件
  */
 
-#pragma once
-
-#include <cassert>
+#ifndef ROBOT_FOC_TEST_MOCK_PLANT_HPP
+#define ROBOT_FOC_TEST_MOCK_PLANT_HPP
 
 namespace robot_foc::test
 {
@@ -37,7 +36,7 @@ namespace robot_foc::test
          * @brief 构造函数，指定采样周期与惯性时间常数
          * @param[in] ts 采样周期，单位：秒，必须 > 0
          * @param[in] tau 惯性时间常数，单位：秒，必须 > 0
-         * @note Debug模式下非法参数触发assert终止程序
+         * @note 非法参数会终止测试程序，避免产生除零或无效仿真结果
          */
         explicit MockFirstOrderPlant(float ts, float tau) noexcept;
 
@@ -65,3 +64,5 @@ namespace robot_foc::test
         void reset() noexcept;
     };
 } // namespace robot_foc::test
+
+#endif // ROBOT_FOC_TEST_MOCK_PLANT_HPP
