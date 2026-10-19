@@ -9,23 +9,27 @@
  * @note 仅单元测试使用，业务代码禁止引用本文件
  */
 
+#include <cassert>
+
 #include "mock_plant.hpp"
 
 namespace robot_foc::test
 {
-    MockFirstOrderPlant::MockFirstOrderPlant(float ts,float tau)
-    : Ts_(ts), tau_(tau), y_(0.0F)
+    MockFirstOrderPlant::MockFirstOrderPlant(float ts,float tau) noexcept
+    : y_(0.0F), ts_(ts), tau_(tau)
     {
+        assert(ts > 0.0F);
+        assert(tau > 0.0F);
     }
 
-    void MockFirstOrderPlant::reset()
+    void MockFirstOrderPlant::reset() noexcept
     {
         y_ = 0.0F;
     }
 
     [[nodiscard]] float MockFirstOrderPlant::update(float u) noexcept
     {
-        y_ = y_ + Ts_ * ((u - y_) / tau_);
+        y_ = y_ + ts_ * ((u - y_) / tau_);
         return y_;
     }
 } // namespace robot_foc::test

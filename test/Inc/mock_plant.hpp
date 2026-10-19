@@ -27,13 +27,13 @@ namespace robot_foc::test
         //对象当前输出状态
         float y_;
         //采样周期
-        float Ts_;
+        float ts_;
         //时间常数
         float tau_;
     public:
         /// @brief 构造函数，指定采样周期
         /// @param ts 采样周期 Ts，单位：秒
-        explicit MockFirstOrderPlant(float ts,float tau);
+        explicit MockFirstOrderPlant(float ts,float tau) noexcept;
 
         /// @brief 执行一步迭代，输入控制量u，返回新的对象输出（反馈）
         /// @param u PID输出的控制量
@@ -41,6 +41,6 @@ namespace robot_foc::test
         [[nodiscard]] float update(float u) noexcept;
 
         /// @brief 重置对象内部状态
-        void reset();
+        void reset() noexcept;
     };
 } // namespace robot_foc::test
