@@ -9,38 +9,59 @@
  *  离散公式： y(k) = y(k-1) + Ts * (u(k) - y(k-1)) / tau
  *  y：对象输出（反馈值，送入PID）
  *  u：PID输出控制输入
- *  Ts：采样周期，必须和PID calculate调用周期保持一致
+ *  Ts：采样周期【秒】，必须和PID calculate调用周期保持一致
+ *  tau：惯性时间常数【秒】，必须 > 0
  * @author Robot_FOC Project
  * @note 仅单元测试使用，不编译进MCU固件
  */
 
 #pragma once
 
+#include <cassert>
+
 namespace robot_foc::test
 {
     /**
      * @brief 一阶惯性被控对象Mock模型
+     * @note 仅PC单元测试仿真，不可用于固件运行
      */
     class MockFirstOrderPlant
     {
     private:
-        //对象当前输出状态
-        float y_;
-        //采样周期
-        float ts_;
-        //时间常数
-        float tau_;
-    public:
-        /// @brief 构造函数，指定采样周期
-        /// @param ts 采样周期 Ts，单位：秒
-        explicit MockFirstOrderPlant(float ts,float tau) noexcept;
+        float y_{0.0F};      ///< 对象当前输出状态
+        float ts_{0.0F};     ///< 采样周期，单位：秒
+        float tau_{0.0F};    ///< 惯性时间常数，单位：秒，必须大于0
 
-        /// @brief 执行一步迭代，输入控制量u，返回新的对象输出（反馈）
-        /// @param u PID输出的控制量
-        /// @return 更新后的被控对象输出
+    public:
+        /**
+         * @brief 构造函数，指定采样周期与惯性时间常数
+         * @param[in] ts 采样周期，单位：秒，必须 > 0
+         * @param[in] tau 惯性时间常数，单位：秒，必须 > 0
+         * @note Debug模式下非法参数触发assert终止程序
+         */
+        explicit MockFirstOrderPlant(float ts, float tau) noexcept;
+
+        ~MockFirstOrderPlant() noexcept = default;
+
+        /**
+         * @brief 禁止拷贝、禁止移动
+         * @note 对象携带仿真状态，防止无意拷贝造成测试隐蔽bug
+         */
+        MockFirstOrderPlant(const MockFirstOrderPlant&) = delete;
+        MockFirstOrderPlant& operator=(const MockFirstOrderPlant&) = delete;
+        MockFirstOrderPlant(MockFirstOrderPlant&&) = delete;
+        MockFirstOrderPlant& operator=(MockFirstOrderPlant&&) = delete;
+
+        /**
+         * @brief 执行一步迭代，输入控制量u，返回新的对象输出（反馈）
+         * @param[in] u PID输出的控制量
+         * @return 更新后的被控对象输出
+         */
         [[nodiscard]] float update(float u) noexcept;
 
-        /// @brief 重置对象内部状态
+        /**
+         * @brief 重置对象内部状态，输出y清零
+         */
         void reset() noexcept;
     };
 } // namespace robot_foc::test

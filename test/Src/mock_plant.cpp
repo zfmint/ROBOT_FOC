@@ -16,7 +16,7 @@
 namespace robot_foc::test
 {
     MockFirstOrderPlant::MockFirstOrderPlant(float ts,float tau) noexcept
-    : y_(0.0F), ts_(ts), tau_(tau)
+        : y_(0.0F), ts_(ts), tau_(tau)
     {
         assert(ts > 0.0F);
         assert(tau > 0.0F);
