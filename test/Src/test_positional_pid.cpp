@@ -20,7 +20,7 @@
 bool test_positional_pid()
 {
     using robot_foc::algorithm::PositionalPid;
-    
+
     //输出限幅测试
     {
         PositionalPid pid_pureP
@@ -167,7 +167,7 @@ bool test_positional_pid_closed()
         -1.0F,
         1.0F,
         -5.0F,
-        5.0F 
+        5.0F
     };
     robot_foc::test::MockFirstOrderPlant plant(Ts,tau);
 
