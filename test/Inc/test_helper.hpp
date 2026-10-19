@@ -1,3 +1,19 @@
+/**
+ * @file test_helper.hpp
+ * @brief 极简单元测试断言框架，用于PC端单元测试
+ * @details
+ *  提供两组断言宏：EXPECT / ASSERT。
+ *  - EXPECT：断言失败仅增加失败计数，继续执行本测试函数剩余代码。
+ *  - ASSERT：断言失败计数+1，并立即return退出当前测试函数。
+ *  全局维护失败计数器 test_failure_count，支持多测试源文件共同统计。
+ *  仅用于PC单元测试，**不编译进MCU固件**。
+ * @author Robot_FOC Project
+ * @note
+ *  1. 宏定义续行符 \ 必须放在行末尾，后面不能存在空格。
+ *  2. 断言第二个参数必须传入字符串字面量，作为用例名称。
+ *  3. inline全局变量，解决多文件include造成重复定义链接错误。
+ */
+
 #ifndef TEST_HELPER_HPP
 #define TEST_HELPER_HPP
 

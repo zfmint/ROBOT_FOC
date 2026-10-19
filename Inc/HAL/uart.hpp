@@ -21,6 +21,7 @@
       - PC单元测试环境单线程运行无问题；
       - 移植至STM32+RTOS时，ISR与任务共享访问必须增加临界区/中断屏蔽，或使用SPSC无锁环形队列。
  */
+
 #ifndef ROBOT_FOC_HAL_UART_HPP
 #define ROBOT_FOC_HAL_UART_HPP
 

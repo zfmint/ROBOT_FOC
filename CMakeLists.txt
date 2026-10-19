@@ -33,6 +33,9 @@ add_library(robot_hal_core STATIC
 
     # Src/COMMON 公共组件实现
     # Src/COMMON/xxx.cpp
+
+    #ALGORITHM算法实现
+    Src/ALGORITHM/pid.cpp
 )
 
 ## robot_hal_core编译选项：生产库关闭异常、RTTI，适配STM32嵌入式
@@ -88,6 +91,48 @@ if(NOT CMAKE_CROSSCOMPILING)
 endif()
 
 ##############################################################################
+# robot_test_utils：PC测试辅助工具库【仅PC本机编译，交叉编译跳过】
+# 存放：算法仿真模型（mock_plant、后续二阶模型、信号生成工具等）
+# 和外设mock(robot_hal_mock)做区分，不混入硬件模拟代码
+##############################################################################
+if(NOT CMAKE_CROSSCOMPILING)
+    add_library(robot_test_utils STATIC
+        # 一阶惯性仿真模型
+        Test/Src/mock_plant.cpp
+        # 新增仿真模型放在这里
+    )
+
+    # 私有编译选项，对齐项目风格
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+        target_compile_options(robot_test_utils PRIVATE
+            /utf-8
+            /W4
+            /permissive-
+            /EHs-c-
+            /GR-
+        )
+    else()
+        target_compile_options(robot_test_utils PRIVATE
+            -Wall -Wextra -Wpedantic
+            -fno-exceptions
+            -fno-rtti
+        )
+    endif()
+
+    # 头文件规则：
+    # PUBLIC：robot_test_utils自己需要Test/Inc，并且链接它的目标(pc_unit_test)也能看到Test/Inc
+    target_include_directories(robot_test_utils
+        PUBLIC
+            ${PROJECT_SOURCE_DIR}/Test/Inc
+    )
+
+    # 测试工具库依赖核心业务库
+    target_link_libraries(robot_test_utils PUBLIC robot_hal_core)
+    
+endif()
+
+
+##############################################################################
 # pc_unit_test：PC平台单元测试可执行程序
 # @brief 仅PC本机编译时构建；交叉编译STM32固件时跳过，不编译PC测试代码
 # @details
@@ -111,13 +156,11 @@ if(NOT CMAKE_CROSSCOMPILING)
         Test/Src/test_mock_uart.cpp
         # 错误码单元测试
         Test/Src/test_error_code.cpp
-    )
+        # 位置式PID单元测试
+        Test/Src/test_positional_pid.cpp
+        # 增量式PID单元测试
+        Test/Src/test_incremental_pid.cpp
 
-    ## @brief 测试目标私有头文件搜索目录
-    ## @note Test/Inc存放测试辅助头文件，仅pc_unit_test可见，禁止污染生产库
-    target_include_directories(pc_unit_test
-        PRIVATE
-            ${PROJECT_SOURCE_DIR}/Test/Inc
     )
 
     ## @brief 链接核心库 + mock仿真库
@@ -125,6 +168,7 @@ if(NOT CMAKE_CROSSCOMPILING)
         PRIVATE
             robot_hal_core
             robot_hal_mock
+            robot_test_utils
     )
 
     ## @brief 设置可执行产物输出目录

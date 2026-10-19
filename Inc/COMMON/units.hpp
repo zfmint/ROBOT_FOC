@@ -4,6 +4,7 @@
  * @note 仅做别名，不做强单位编译期检查；后续可升级为带单位包装类型；
  *       每个类型注释明确物理含义与单位，禁止裸float/int表达物理量。
  */
+
 #ifndef ROBOT_FOC_COMMON_UNITS_HPP
 #define ROBOT_FOC_COMMON_UNITS_HPP
 

@@ -14,6 +14,7 @@
  * @warning 本类为抽象基类，不能直接实例化；必须由具体外设类继承实现init/deinit虚函数
  * @note 状态标记由基类内部维护，派生类仅可通过protected辅助函数修改状态，禁止直接读写initialized_
  */
+
 #ifndef ROBOT_FOC_HAL_PERIPHERAL_HPP
 #define ROBOT_FOC_HAL_PERIPHERAL_HPP
 
