@@ -32,13 +32,13 @@ void test_incremental_pid()
         pid_pureP.reset();
 
         float du1 = pid_pureP.calculate(1.0F, 0.0F);
-        ROBOT_FOC_TEST_EXPECT(fabsf(du1 - 2.0F) < 1e-6F,"inc pid pureP calc du1");
+        ROBOT_FOC_TEST_EXPECT(std::fabs(du1 - 2.0F) < 1e-6F,"inc pid pureP calc du1");
 
         float du2 = pid_pureP.calculate(1.0F, 0.2F);
-        ROBOT_FOC_TEST_EXPECT(fabsf(du2 - (-0.4F)) < 1e-6F, "inc pid pureP calc du2");
+        ROBOT_FOC_TEST_EXPECT(std::fabs(du2 - (-0.4F)) < 1e-6F, "inc pid pureP calc du2");
 
         float du3 = pid_pureP.calculate(1.0F, 0.5F);
-        ROBOT_FOC_TEST_EXPECT(fabsf(du3 - (-0.6F)) < 1e-6F, "inc pid pureP calc du3");
+        ROBOT_FOC_TEST_EXPECT(std::fabs(du3 - (-0.6F)) < 1e-6F, "inc pid pureP calc du3");
     }
 
     // Kp + Ki，无微分项
@@ -54,10 +54,10 @@ void test_incremental_pid()
         pid_pi.reset();
 
         float du1 = pid_pi.calculate(1.0F, 0.0F);
-        ROBOT_FOC_TEST_EXPECT(fabsf(du1 - 1.5F) < 1e-6F,"inc pid PI calc du1");
+        ROBOT_FOC_TEST_EXPECT(std::fabs(du1 - 1.5F) < 1e-6F,"inc pid PI calc du1");
 
         float du2 = pid_pi.calculate(1.0F, 0.5F);
-        ROBOT_FOC_TEST_EXPECT(fabsf(du2 - (-0.25F)) < 1e-6F, "inc pid PI calc du2");
+        ROBOT_FOC_TEST_EXPECT(std::fabs(du2 - (-0.25F)) < 1e-6F, "inc pid PI calc du2");
     }
 
     // Kp+Ki+Kd 三项全部启用，完整公式校验
@@ -73,13 +73,13 @@ void test_incremental_pid()
         pid_full.reset();
 
         float du1 = pid_full.calculate(1.0F, 0.0F);
-        ROBOT_FOC_TEST_EXPECT(fabsf(du1 - 2.5F) < 1e-6F,"inc pid full 3-term calc du1");
+        ROBOT_FOC_TEST_EXPECT(std::fabs(du1 - 2.5F) < 1e-6F,"inc pid full 3-term calc du1");
 
         float du2 = pid_full.calculate(1.0F, 0.3F);
-        ROBOT_FOC_TEST_EXPECT(fabsf(du2 - (-0.45F)) < 1e-6F, "inc pid full 3-term calc du2");
+        ROBOT_FOC_TEST_EXPECT(std::fabs(du2 - (-0.45F)) < 1e-6F, "inc pid full 3-term calc du2");
 
         float du3 = pid_full.calculate(1.0F, 0.6F);
-        ROBOT_FOC_TEST_EXPECT(fabsf(du3 - (-0.44F)) < 1e-6F, "inc pid full 3-term calc du3");
+        ROBOT_FOC_TEST_EXPECT(std::fabs(du3 - (-0.44F)) < 1e-6F, "inc pid full 3-term calc du3");
     }
 
     // reset 测试：清空三段历史误差 e_k,e_{k-1},e_{k-2}
@@ -99,7 +99,7 @@ void test_incremental_pid()
 
         // reset后历史误差清零，第一拍计算结果和全新实例一致
         float du = pid_reset.calculate(1.0F, 0.0F);
-        ROBOT_FOC_TEST_EXPECT(fabsf(du - 1.2F) < 1e-6F, "inc pid reset clear error history");
+        ROBOT_FOC_TEST_EXPECT(std::fabs(du - 1.2F) < 1e-6F, "inc pid reset clear error history");
     }
 
     // Δu增量限幅测试
@@ -115,10 +115,10 @@ void test_incremental_pid()
         pid_du_clamp.reset();
 
         float du_upper = pid_du_clamp.calculate(1.0F,0.0F);
-        ROBOT_FOC_TEST_EXPECT(fabsf(du_upper - 1.0F) <1e-6F,"inc pid du upper limit");
+        ROBOT_FOC_TEST_EXPECT(std::fabs(du_upper - 1.0F) <1e-6F,"inc pid du upper limit");
 
         float du_lower = pid_du_clamp.calculate(-1.0F,0.0F);
-        ROBOT_FOC_TEST_EXPECT(fabsf(du_lower - (-1.0F)) <1e-6F,"inc pid du lower limit");
+        ROBOT_FOC_TEST_EXPECT(std::fabs(du_lower - (-1.0F)) <1e-6F,"inc pid du lower limit");
     }
 
 }
@@ -206,7 +206,7 @@ void test_incremental_pid_closed()
 
     // 稳态误差校验
     const float steady_tol = 0.1F;
-    ROBOT_FOC_TEST_EXPECT(fabsf(fb - set) < steady_tol,"inc closed step response: steady state error within tolerance");
+    ROBOT_FOC_TEST_EXPECT(std::fabs(fb - set) < steady_tol,"inc closed step response: steady state error within tolerance");
 
     // 超调校验：峰值不超过设定值*(1+超调比例)，加浮点容差
     const float peak_max_allowed = set * (1.0F + max_overshoot_ratio);
