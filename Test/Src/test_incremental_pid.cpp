@@ -15,7 +15,7 @@
  * @details 验证增量计算公式正确性、reset复位、增量Δu限幅功能
  * 增量公式：Δu = Kp*(e_k - e_{k-1}) + Ki*e_k + Kd*(e_k - 2*e_{k-1}+e_{k-2})
  */
-bool test_incremental_pid()
+void test_incremental_pid()
 {
     using robot_foc::algorithm::IncrementalPid;
 
@@ -32,13 +32,13 @@ bool test_incremental_pid()
         pid_pureP.reset();
 
         float du1 = pid_pureP.calculate(1.0F, 0.0F);
-        EXPECT(fabsf(du1 - 2.0F) < 1e-6F,"inc pid pureP calc du1");
+        ROBOT_FOC_TEST_EXPECT(std::fabs(du1 - 2.0F) < 1e-6F,"inc pid pureP calc du1");
 
         float du2 = pid_pureP.calculate(1.0F, 0.2F);
-        EXPECT(fabsf(du2 - (-0.4F)) < 1e-6F, "inc pid pureP calc du2");
+        ROBOT_FOC_TEST_EXPECT(std::fabs(du2 - (-0.4F)) < 1e-6F, "inc pid pureP calc du2");
 
         float du3 = pid_pureP.calculate(1.0F, 0.5F);
-        EXPECT(fabsf(du3 - (-0.6F)) < 1e-6F, "inc pid pureP calc du3");
+        ROBOT_FOC_TEST_EXPECT(std::fabs(du3 - (-0.6F)) < 1e-6F, "inc pid pureP calc du3");
     }
 
     // Kp + Ki，无微分项
@@ -54,10 +54,10 @@ bool test_incremental_pid()
         pid_pi.reset();
 
         float du1 = pid_pi.calculate(1.0F, 0.0F);
-        EXPECT(fabsf(du1 - 1.5F) < 1e-6F,"inc pid PI calc du1");
+        ROBOT_FOC_TEST_EXPECT(std::fabs(du1 - 1.5F) < 1e-6F,"inc pid PI calc du1");
 
         float du2 = pid_pi.calculate(1.0F, 0.5F);
-        EXPECT(fabsf(du2 - (-0.25F)) < 1e-6F, "inc pid PI calc du2");
+        ROBOT_FOC_TEST_EXPECT(std::fabs(du2 - (-0.25F)) < 1e-6F, "inc pid PI calc du2");
     }
 
     // Kp+Ki+Kd 三项全部启用，完整公式校验
@@ -73,13 +73,13 @@ bool test_incremental_pid()
         pid_full.reset();
 
         float du1 = pid_full.calculate(1.0F, 0.0F);
-        EXPECT(fabsf(du1 - 2.5F) < 1e-6F,"inc pid full 3-term calc du1");
+        ROBOT_FOC_TEST_EXPECT(std::fabs(du1 - 2.5F) < 1e-6F,"inc pid full 3-term calc du1");
 
         float du2 = pid_full.calculate(1.0F, 0.3F);
-        EXPECT(fabsf(du2 - (-0.45F)) < 1e-6F, "inc pid full 3-term calc du2");
+        ROBOT_FOC_TEST_EXPECT(std::fabs(du2 - (-0.45F)) < 1e-6F, "inc pid full 3-term calc du2");
 
         float du3 = pid_full.calculate(1.0F, 0.6F);
-        EXPECT(fabsf(du3 - (-0.44F)) < 1e-6F, "inc pid full 3-term calc du3");
+        ROBOT_FOC_TEST_EXPECT(std::fabs(du3 - (-0.44F)) < 1e-6F, "inc pid full 3-term calc du3");
     }
 
     // reset 测试：清空三段历史误差 e_k,e_{k-1},e_{k-2}
@@ -99,7 +99,7 @@ bool test_incremental_pid()
 
         // reset后历史误差清零，第一拍计算结果和全新实例一致
         float du = pid_reset.calculate(1.0F, 0.0F);
-        EXPECT(fabsf(du - 1.2F) < 1e-6F, "inc pid reset clear error history");
+        ROBOT_FOC_TEST_EXPECT(std::fabs(du - 1.2F) < 1e-6F, "inc pid reset clear error history");
     }
 
     // Δu增量限幅测试
@@ -115,13 +115,12 @@ bool test_incremental_pid()
         pid_du_clamp.reset();
 
         float du_upper = pid_du_clamp.calculate(1.0F,0.0F);
-        EXPECT(fabsf(du_upper - 1.0F) <1e-6F,"inc pid du upper limit");
+        ROBOT_FOC_TEST_EXPECT(std::fabs(du_upper - 1.0F) <1e-6F,"inc pid du upper limit");
 
         float du_lower = pid_du_clamp.calculate(-1.0F,0.0F);
-        EXPECT(fabsf(du_lower - (-1.0F)) <1e-6F,"inc pid du lower limit");
+        ROBOT_FOC_TEST_EXPECT(std::fabs(du_lower - (-1.0F)) <1e-6F,"inc pid du lower limit");
     }
 
-    return true;
 }
 
 /**
@@ -129,7 +128,7 @@ bool test_incremental_pid()
  * @details 配合一阶惯性被控对象，验证阶跃跟踪能力、超调；
  * 增量式PID输出Δu，外部累加得到总控制量u，并在外部实现抗饱和逻辑
  */
-bool test_incremental_pid_closed()
+void test_incremental_pid_closed()
 {
     using robot_foc::algorithm::IncrementalPid;
     using robot_foc::test::MockFirstOrderPlant;
@@ -207,16 +206,15 @@ bool test_incremental_pid_closed()
 
     // 稳态误差校验
     const float steady_tol = 0.1F;
-    EXPECT(fabsf(fb - set) < steady_tol,"inc closed step response: steady state error within tolerance");
+    ROBOT_FOC_TEST_EXPECT(std::fabs(fb - set) < steady_tol,"inc closed step response: steady state error within tolerance");
 
     // 超调校验：峰值不超过设定值*(1+超调比例)，加浮点容差
     const float peak_max_allowed = set * (1.0F + max_overshoot_ratio);
-    EXPECT(fb_max <= peak_max_allowed + 1e-6F, "inc closed step response: overshoot is controlled");
+    ROBOT_FOC_TEST_EXPECT(fb_max <= peak_max_allowed + 1e-6F, "inc closed step response: overshoot is controlled");
 
     std::cout << "\n[Incremental Closed Step] set=" << set
               << " | peak_fb=" << fb_max
               << " | final_fb=" << fb
               << " | allowed_peak=" << peak_max_allowed << "\n";
 
-    return true;
 }

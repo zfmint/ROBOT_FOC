@@ -18,7 +18,7 @@
  *      2. 纯数学算法，无硬件、RTOS依赖，仅依赖COMMON基础类型
  *      3. 两个独立类，互不耦合
  *      4. 调用约定：每次calculate()调用间隔必须为固定采样周期
- * 
+ *
  * @warning
  *  位置式PID：输出为绝对控制量，一旦计算出错，直接满量程输出，冲击大
  *  增量式PID：输出为控制量的变化量，只保存最近3次误差，计算出错扰动很小，安全性高
@@ -49,8 +49,24 @@ namespace robot_foc::algorithm
         float last_err_{0.0F};  //上一次误差
 
     public:
+        /**
+         * @brief 构造位置式PID
+         * @param kp 比例系数
+         * @param ki 积分系数
+         * @param kd 微分系数
+         * @param out_min 输出下限
+         * @param out_max 输出上限
+         * @param integral_min 积分项下限
+         * @param integral_max 积分项上限
+         */
         PositionalPid(float kp, float ki, float kd, float out_min,
             float out_max, float integral_min, float integral_max) noexcept;
+
+        // 禁止拷贝、禁止移动，防止无意复制控制器状态
+        PositionalPid(const PositionalPid&) = delete;
+        PositionalPid& operator=(const PositionalPid&) = delete;
+        PositionalPid(PositionalPid&&) = delete;
+        PositionalPid& operator=(PositionalPid&&) = delete;
 
         /**
          * @brief 单次PID计算
@@ -72,7 +88,7 @@ namespace robot_foc::algorithm
          * @param kd 微分系数
          */
         void set_param(float kp, float ki, float kd) noexcept;
-        
+
         /**
          * @brief 获取kp
          * @return kp_
@@ -103,7 +119,7 @@ namespace robot_foc::algorithm
          */
         [[nodiscard]] float get_last_err() const noexcept;
     };
-    
+
     /**
      * @brief 增量式Pid控制器
      */
@@ -122,8 +138,23 @@ namespace robot_foc::algorithm
         float err3_{0.0F};  //e(k-2)
 
     public:
+        /**
+         * @brief 构造增量式PID
+         * @param kp 比例系数
+         * @param ki 积分系数
+         * @param kd 微分系数
+         * @param delta_out_min 输出增量下限
+         * @param delta_out_max 输出增量上限
+         */
         IncrementalPid(float kp ,float ki, float kd,
             float delta_out_min, float delta_out_max) noexcept;
+        ~IncrementalPid() noexcept = default;
+
+        // 禁止拷贝、禁止移动，防止无意复制控制器状态
+        IncrementalPid(const IncrementalPid&) = delete;
+        IncrementalPid& operator=(const IncrementalPid&) = delete;
+        IncrementalPid(IncrementalPid&&) = delete;
+        IncrementalPid& operator=(IncrementalPid&&) = delete;
 
         /**
          * @brief 单次PID计算
@@ -132,12 +163,12 @@ namespace robot_foc::algorithm
          * @return 控制增量Δu，做输出限幅
          */
         [[nodiscard]] float calculate(float setpoint, float feedback) noexcept;
-        
+
         /**
          * @brief 复位，err1,err2,err3清零
          */
         void reset() noexcept;
-        
+
         /**
          * @brief 动态修改Pid参数
          * @param kp 比例系数
@@ -145,7 +176,7 @@ namespace robot_foc::algorithm
          * @param kd 微分系数
          */
         void set_param(float kp, float ki, float kd) noexcept;
-        
+
         /**
          * @brief 获取kp
          * @return kp_
@@ -185,7 +216,7 @@ namespace robot_foc::algorithm
 
 
     };
-    
+
 } // namespace robot_foc::algorithm
 
 #endif

@@ -11,7 +11,7 @@
 
 1. 本项目采用CMake >= 3.16 构建，当前支持两套编译环境。
  - PC本机编译：\
- 构建核心库 + Mock仿真库 + PC单元测试，此处用于模块编译和测试
+ 构建核心库 + Mock仿真库 + 测试工具库 + PC单元测试，此处用于模块编译和测试
  - STM32F4交叉编译\
  仅构建核心库`robot_hal_core`,Mock仿真库与test测试跳过，不会编译进单片机。
 2. 构建目标
@@ -19,12 +19,15 @@
  静态库、全平台、HAL + COMMON、进入固件
  - `robot_hal_mock`\
  静态库、仅PC、Mock文件、不进入固件
+ - `robot_test_utils`\
+ 静态库、仅PC、仿真模型和测试辅助实现、不进入固件
  - `pc_unit_test`\
  PC 测试可执行文件，仅 PC 构建，不进入固件
 3. 依赖关系
  依赖箭头指向被依赖方
  ```
  pc_unit_test -> robot_hal_mock -> robot_hal_core
+ pc_unit_test -> robot_test_utils -> robot_hal_core
  ```
  - 约束关系\
  STM固件工程只链接`robot_hal_core`,若固件代码`include`了Mock，链接阶段会报错
@@ -55,7 +58,14 @@
  链接依赖：PUBLIC 链接 `robot_hal_core`
  - 约束条件\
  头文件层面对外可见；但固件未链接 mock 库
-3. `pc_unit_test`（PC 单元测试可执行程序）
+3. `robot_test_utils`（PC 测试工具库）
+ - 作用域\
+ 一阶惯性模型等仅供 PC 算法测试使用的仿真组件
+ - 配置项\
+ 源文件：`Test/Src/mock_plant.cpp`；头文件目录 `Test/Inc` 仅对该目标私有可见
+ - 约束条件\
+ 仅在非交叉编译时构建，不进入生产固件
+4. `pc_unit_test`（PC 单元测试可执行程序）
  - 作用域\
  加载 `robot_hal_core` + `robot_hal_mock` 运行全部单元测试
  - 配置项\
@@ -63,7 +73,7 @@
  私有目录：`Test/Inc`（PRIVATE，仅测试程序可见，生产代码无法包含测试头）
  MSVC编译选项：`/EHsc`（启用异常）\
  GCC: `-Wall -Wextra -Wpedantic`（不关闭异常、RTTI）
- 链接依赖：PRIVATE 链接 `robot_hal_core` + `robot_hal_mock`
+ 链接依赖：PRIVATE 链接 `robot_hal_core` + `robot_hal_mock` + `robot_test_utils`
  输出程序：Visual Studio 多配置生成器为 `build/bin/Debug/pc_unit_test.exe`；单配置生成器通常为 `build/bin/pc_unit_test`
  - 约束条件\
  `Test/Inc` 使用 PRIVATE，不会传递给 `robot_hal_core`；生产代码永远无法 `#include` 测试辅助头文件

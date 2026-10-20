@@ -120,9 +120,9 @@ if(NOT CMAKE_CROSSCOMPILING)
     endif()
 
     # 头文件规则：
-    # PUBLIC：robot_test_utils自己需要Test/Inc，并且链接它的目标(pc_unit_test)也能看到Test/Inc
+    # PRIVATE：测试工具库内部使用Test/Inc，不向依赖目标传播测试头文件路径
     target_include_directories(robot_test_utils
-        PUBLIC
+        PRIVATE
             ${PROJECT_SOURCE_DIR}/Test/Inc
     )
 
@@ -160,6 +160,8 @@ if(NOT CMAKE_CROSSCOMPILING)
         Test/Src/test_positional_pid.cpp
         # 增量式PID单元测试
         Test/Src/test_incremental_pid.cpp
+        # 滑动滤波单元测试
+        Test/Src/test_sliding_average.cpp
 
     )
 
@@ -169,6 +171,12 @@ if(NOT CMAKE_CROSSCOMPILING)
             robot_hal_core
             robot_hal_mock
             robot_test_utils
+    )
+
+    # 测试头文件仅对PC测试程序可见，不传播给生产目标
+    target_include_directories(pc_unit_test
+        PRIVATE
+            ${PROJECT_SOURCE_DIR}/Test/Inc
     )
 
     ## @brief 设置可执行产物输出目录

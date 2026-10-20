@@ -23,11 +23,11 @@
 
 ## 三、总体架构与分层
 
-COMMON 是四层架构之外的公共基础层。依赖箭头指向被依赖方，当前代码只实现了 COMMON、HAL 和部分 DRIVERS；ALGORITHM 与 RTOS 目录为后续阶段预留。
+COMMON 是四层架构之外的公共基础层。依赖箭头指向被依赖方，当前代码已实现 COMMON、HAL、部分 DRIVERS 和 PID 算法；RTOS 目录仍为后续阶段预留。
 
 ```text
 RTOS / 应用集成层（规划）
-        ├──> ALGORITHM / 业务层（规划） ──┐
+        ├──> ALGORITHM / 业务层 ──────────┐
         ├──> DRIVERS / 具体驱动层 ────────┤
         └──> HAL / 抽象接口层 ────────────┘
                     │
@@ -210,20 +210,20 @@ Robot_FOC/
 │   └── stage1_review.md        # Day1～Day8 阶段评审、问题和决策记录
 │
 ├── Inc/                        # 头文件目录（全项目声明）
-│   ├── ALGORITHM/              # 算法层头文件：规划目录，当前尚无实现
+│   ├── ALGORITHM/              # 算法层头文件：位置式/增量式 PID，滤波算法开发中
 │   ├── COMMON/                 # 公共基础头文件：ErrorCode 错误码、物理单位别名
 │   ├── DRIVERS/                # 硬件驱动头文件：真实驱动与 Mock 仿真驱动声明
 │   ├── HAL/                    # 硬件抽象头文件：Peripheral / Gpio / Uart / ByteRingBuffer
 │   └── RTOS/                   # 系统层头文件：规划目录，当前尚无实现
 │
 ├── Src/                        # 实现文件目录（.cpp 定义）
-│   ├── ALGORITHM/              # 算法层实现：PID / FOC（目前空置）
+│   ├── ALGORITHM/              # 算法层实现：位置式/增量式 PID
 │   ├── DRIVERS/                # 硬件驱动实现：MockGpio；MockUart 为头文件模板
 │   ├── HAL/                    # HAL 抽象实现：生命周期、外设状态管理
 │   └── RTOS/                   # RTOS 实现：规划目录，当前尚无实现
 │
 └── Test/                       # PC 单元测试目录（非交叉编译时由 CMake 构建）
-    ├── Inc/                    # 测试辅助头文件（test_helper.hpp、EXPECT 宏）
+    ├── Inc/                    # 测试辅助头文件（test_helper.hpp、测试断言宏）
     ├── Src/                    # 测试用例实现（test_mock_gpio.cpp 等）
     ├── pybind/                 # Python 绑定相关
     └── pc_test_main.cpp        # 测试入口：注册并运行全部测试用例，汇总退出码
@@ -231,11 +231,12 @@ Robot_FOC/
 
 ## 八、当前构建与验证
 
-当前 CMake 定义两个目标：
+当前 CMake 定义四个目标：
 
 - `robot_hal_core`：生产核心静态库，MSVC 使用 `/W4 /permissive- /EHs-c- /GR-`；GCC/Clang 使用严格警告并关闭异常、RTTI。
 - `robot_hal_mock`：非交叉编译时生成的 PC Mock 驱动静态库。
-- `pc_unit_test`：非交叉编译时生成的 PC 测试程序，链接 `robot_hal_core` 和 `robot_hal_mock`，并使用测试目录中的测试辅助代码。
+- `robot_test_utils`：非交叉编译时生成的 PC 仿真工具库，当前提供一阶惯性被控对象。
+- `pc_unit_test`：非交叉编译时生成的 PC 测试程序，链接上述库并运行全部已注册测试。
 
 PC 验证命令：
 
@@ -251,5 +252,6 @@ cmake --build build --config Debug --clean-first
 
 - Day1～Day7：PC 端基础架构、GPIO、环形缓冲区、UART、错误码、编译约束和跨层依赖检查已完成。
 - Day8：架构说明、CMake/PC 构建说明、阶段问题清单和技术决策记录已建立。
-- Day9 以后：实现 PID、滤波、FOC、运动学、状态机，再进入 STM32 和 FreeRTOS 移植。
-- `Inc/ALGORITHM`、`Src/ALGORITHM`、`Inc/RTOS`、`Src/RTOS` 当前仅为规划目录，不应视为已实现功能。
+- Day9：位置式和增量式 PID、限幅、复位、抗积分饱和及 PC 闭环测试已完成。
+- Day10 以后：继续实现滤波、FOC、运动学和状态机，再进入 STM32 和 FreeRTOS 移植。
+- `Inc/RTOS`、`Src/RTOS` 当前仅为规划目录，不应视为已实现功能。

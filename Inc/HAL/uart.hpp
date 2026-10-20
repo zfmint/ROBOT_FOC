@@ -67,7 +67,7 @@ namespace robot_foc::hal
     };
 
     template<std::size_t RxBufferCapacity>
-    
+
     class Uart : public Peripheral
     {
     private:
