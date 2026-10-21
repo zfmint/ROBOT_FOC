@@ -36,6 +36,7 @@ add_library(robot_hal_core STATIC
 
     #ALGORITHM算法实现
     Src/ALGORITHM/pid.cpp
+    Src/ALGORITHM/encoder_speed.cpp
 )
 
 ## robot_hal_core编译选项：生产库关闭异常、RTTI，适配STM32嵌入式

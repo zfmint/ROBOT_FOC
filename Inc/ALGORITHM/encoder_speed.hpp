@@ -1,6 +1,6 @@
 /**
  * @file encoder_speed.hpp
- * @brief 编码器转速估计器（模板编译期滤波窗口）
+ * @brief 编码器转速估计器
  * @details
  * 根据硬件定时器原始计数值，计算编码器转速RPM；支持N位计数器溢出回绕补偿。
  * 使用编译期固定窗口滑动平均滤波做转速平滑；无堆内存，适合MCU。
@@ -10,9 +10,6 @@
  *  2. 周期性调用 update()，传入当前硬件计数值与本次采样周期；
  *  3. 第一次update只建立计数基线，baseline_valid=false，不输出有效速度；
  *  4. 后续update输出 raw_rpm / filtered_rpm 至 EncoderSpeedSample。
- *
- * @tparam FilterWindow 滑动平均滤波窗口大小，必须 >= 2U
- *
  * @author Robot_FOC Project
  * @note
  *  - counter_bits：硬件定时器计数位宽，用于溢出补偿，合法范围8~32；
@@ -56,14 +53,12 @@ namespace robot_foc::algorithm
         std::int32_t delta_counts{0};
         // 原始未滤波转速，RPM
         common::Rpm raw_rpm{0.0F};
-        // 滑动后平均滤波后转速,RPM
+        // 滑动平均滤波后转速,RPM
         common::Rpm filtered_rpm{0.0F};
     };
     
-    template<std::size_t FilterWindow>
     class EncoderSpeedEstimator
     {
-        static_assert(FilterWindow >= 2U,"EncoderSpeedEstimator: FilterWindow must >=2");
     private:
         /**
          * @brief 计算带溢出补偿的计数值差分
@@ -76,14 +71,16 @@ namespace robot_foc::algorithm
             std::int32_t& delta_counts
         ) const noexcept;
 
+        // 转速滑动平均滤波窗口长度，编码器测速专属固定配置
+        static constexpr std::size_t kFilterWindow{4U};
+        SlidingAverage<kFilterWindow> speed_filter_{};
+
         // 保存用户传入的配置参数
         EncoderSpeedConfig config_{};
-        // 转速滑动平均滤波器，编译期窗口大小
-        SlidingAverage<FilterWindow> speed_filter_{};
 
         // 上一次update的硬件计数值，计算差分
         std::uint32_t previous_count_{0U};
-        // 每转总计数，有configure校验后缓存 pulses_per_revolution * 4
+        // 每转总计数
         std::uint32_t counts_per_revolution_{0U};
 
         // 判断configure是否配置成功
@@ -145,8 +142,5 @@ namespace robot_foc::algorithm
         [[nodiscard]] std::uint32_t counts_per_revolution() const noexcept;
     };
 } // namespace robot_foc::algorithm
-
-
-
 
 #endif
