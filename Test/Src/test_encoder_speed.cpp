@@ -20,3 +20,29 @@
  *  - 本测试仅PC单元测试使用，不编译进MCU固件；
  *  - 依赖：MockFirstOrderPlant、EncoderSpeedEstimator、SlidingAverage
  */
+#include <cmath>
+#include <cstdint>
+
+#include "test_helper.hpp"
+#include "mock_encoder_counter.hpp"
+#include "ALGORITHM/encoder_speed.hpp"
+#include "COMMON/error_code.hpp"
+#include "COMMON/units.hpp"
+
+void test_encoder_speed()
+{
+    using robot_foc::algorithm::EncoderSpeedEstimator;
+    using robot_foc::common::ErrorCode;
+
+    constexpr std::uint32_t kTestPpr = 2000U;
+    constexpr std::uint8_t  kTestBits = 16U;
+    constexpr float kTs = 0.001F;
+    constexpr float kEps = 0.1F;
+
+    // 未配置直接运行
+    {
+        EncoderSpeedEstimator est;
+        std::uint32_t current_cnt = 1000U;
+        auto res = est.update();
+    }
+}

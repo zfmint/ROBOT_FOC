@@ -7,7 +7,7 @@
  *
  * 换算关系：
  *  count_floating = position * pulses_per_revolution
- *  对浮点计数值四舍五入后映射到 [0, 2^N - 1] 的环形计数空间
+ *  对浮点计数值四舍五入后映射到 [0, wrap_max] 的环形计数空间
  *
  * 使用链路：
  *  MockFirstOrderPlant（输出连续位置） → MockEncoderCounter → uint32_t 计数值
@@ -22,31 +22,48 @@
 #ifndef ROBOT_FOC_TEST_MOCK_ENCODER_COUNTER_HPP
 #define ROBOT_FOC_TEST_MOCK_ENCODER_COUNTER_HPP
 
-#include <cmath>
 #include <cstdint>
-#include <cstdlib>
 
 namespace robot_foc::test
 {
     class MockEncoderCounter
     {
     private:
+        // 倍频后每转总脉冲数
         std::uint32_t ppr_{0U};
+        // 定时器计数寄存器位宽
         std::uint8_t  bits_{16U};
+        // 计数器满量程最大值：（1 << bits_）-1
+        std::uint32_t wrap_max_{0U};
+        // 上一时刻浮点计数值，用于平滑连续位置推演
+        float last_float_count_{0.0F};
+        
     public:
         /**
          * @brief 构造编码器计数仿真器
          * @param pulses_per_revolution 一圈总脉冲（已包含倍频）
          * @param counter_bits 定时器计数寄存器位宽，如16U、32U
          */
-        MockEncoderCounter(std::uint32_t pulses_per_revolution, std::uint8_t counter_bits) noexcept
-            : ppr_{pulses_per_revolution},
-              bits_{counter_bits}
-        {
+        MockEncoderCounter(std::uint32_t pulses_per_revolution, std::uint8_t counter_bits) noexcept;
+        
+        // 禁止拷贝、移动
+        MockEncoderCounter(const MockEncoderCounter&) = delete;
+        MockEncoderCounter& operator=(const MockEncoderCounter&) = delete;
+        MockEncoderCounter(MockEncoderCounter&&) = delete;
+        MockEncoderCounter& operator=(MockEncoderCounter&&) = delete;
+        
+        /**
+         * @brief 根据当前机械位置（圈）更新，输出硬件定时器计数值
+         * @param position_rev 当前机械位置，单位：圈 可正可负
+         * @return 环形无符号硬件计数值
+         */
+        [[nodiscard]] std::uint32_t update(float position_rev) noexcept;
 
-        }
+        /**
+         * @brief 重置仿真状态，清零内部计数基线
+         */
+        void reset() noexcept;
     };
 } // namespace robot_foc::test
-
 
 #endif

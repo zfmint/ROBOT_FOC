@@ -45,7 +45,7 @@ void test_positional_pid()
     //reset 测试
     {
         PositionalPid pid_reset
-        {
+        (
             1.0F,
             1.0F,
             0.0F,
@@ -53,7 +53,7 @@ void test_positional_pid()
             1.0F,
             -5.0F,
             5.0F
-        };
+        );
 
         (void)pid_reset.calculate(0.5F, 0.0F);
         float int_before_rst = pid_reset.get_integral();
@@ -159,7 +159,7 @@ void test_positional_pid_closed()
     const float max_overshoot_ratio = 0.15F; // 允许最大15%超调
 
     PositionalPid pid
-    {
+    (
         1.2F,
         2.5F,
         0.0F,
@@ -167,7 +167,7 @@ void test_positional_pid_closed()
         1.0F,
         -5.0F,
         5.0F
-    };
+    );
     robot_foc::test::MockFirstOrderPlant plant(Ts,tau);
 
     pid.reset();
