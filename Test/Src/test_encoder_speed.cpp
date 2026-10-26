@@ -295,8 +295,7 @@ void test_encoder_speed_closed()
         MockEncoderCounter encoder{kCountsPerRevolution, 16U};
         EncoderSpeedEstimator estimator{};
         EncoderSpeedSample sample{};
-        const ErrorCode configured = estimator.configure(
-            EncoderSpeedConfig{kRawPpr, 16U, kQuadratureGain});
+        const ErrorCode configured = estimator.configure(EncoderSpeedConfig{kRawPpr, 16U, kQuadratureGain});
 
         float position_revolutions{0.0F};
         bool all_updates_ok = configured == ErrorCode::Ok;
