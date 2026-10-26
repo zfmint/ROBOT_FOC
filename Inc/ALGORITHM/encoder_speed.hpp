@@ -17,8 +17,7 @@
  *  - 未配置状态调用update返回 ErrorNotReady；
  *  - 函数失败时，输出sample参数不会被修改；
  *  - 单元测试：Test/Src/test_encoder_speed.cpp
- *  - pulses_per_revolution：传入硬件倍频完成后的 CPR 总计数
- *  上层调用方传入原始 PPR ；本底层类自动做倍频换算
+ *  - pulses_per_revolution 上层调用方传入原始 PPR ；本底层类自动做倍频换算
  * @warning 并发访问外部需要临界区保护，内部无同步
  */
 #ifndef ROBOT_FOC_ALGORITHM_ENCODER_SPEED_HPP
