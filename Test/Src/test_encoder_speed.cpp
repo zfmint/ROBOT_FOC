@@ -46,7 +46,7 @@ void test_encoder_speed()
         EncoderSpeedEstimator estimator{};
 
         const ErrorCode zero_ppr = estimator.configure(EncoderSpeedConfig{0U, 16U, 4U});
-        const ErrorCode invalid_bits = estimator.configure(EncoderSpeedConfig{100U, 8U, 4U});
+        const ErrorCode invalid_bits = estimator.configure(EncoderSpeedConfig{100U, 7U, 4U});
         const ErrorCode invalid_gain = estimator.configure(EncoderSpeedConfig{100U, 16U, 3U});
         const std::uint32_t overflow_ppr =
             (std::numeric_limits<std::uint32_t>::max() / 4U) + 1U;
