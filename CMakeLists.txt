@@ -100,6 +100,8 @@ if(NOT CMAKE_CROSSCOMPILING)
     add_library(robot_test_utils STATIC
         # 一阶惯性仿真模型
         Test/Src/mock_plant.cpp
+        # 测速编码器仿真模型
+        Test/Src/mock_encoder_counter.cpp
         # 新增仿真模型放在这里
     )
 
@@ -163,6 +165,8 @@ if(NOT CMAKE_CROSSCOMPILING)
         Test/Src/test_incremental_pid.cpp
         # 滑动滤波单元测试
         Test/Src/test_sliding_average.cpp
+        # 测速编码器单元测试
+        Test/Src/test_encoder_speed.cpp
 
     )
 

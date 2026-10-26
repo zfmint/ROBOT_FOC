@@ -8,7 +8,7 @@
  * 使用流程：
  *  1. 填充 EncoderSpeedConfig 配置结构体，调用 configure() 完成配置；is_configured()变为true
  *  2. 周期性调用 update()，传入当前硬件计数值与本次采样周期；
- *  3. 第一次update只建立计数基线，baseline_valid=false，不输出有效速度；
+ *  3. 第一次update只建立计数基线，baseline_valid=true，不输出有效速度；
  *  4. 后续update输出 raw_rpm / filtered_rpm 至 EncoderSpeedSample。
  * @author Robot_FOC Project
  * @note
@@ -18,7 +18,7 @@
  *  - 函数失败时，输出sample参数不会被修改；
  *  - 单元测试：Test/Src/test_encoder_speed.cpp
  *  - pulses_per_revolution：传入硬件倍频完成后的 CPR 总计数
- *  上层调用方自行完成 PPR× 硬件倍频计算；本底层类不做倍频换算
+ *  上层调用方传入原始 PPR ；本底层类自动做倍频换算
  * @warning 并发访问外部需要临界区保护，内部无同步
  */
 #ifndef ROBOT_FOC_ALGORITHM_ENCODER_SPEED_HPP
@@ -35,17 +35,26 @@ namespace robot_foc::algorithm
 {
     /**
      * @brief 编码器转速估计器配置参数
+     * @param pulses_per_revolution 编码器每转物理脉冲数
+     * @param counter_bits 硬件定时器计数位宽，用于溢出补偿
+     * @param quadrature_gain 正交倍频系数,支持1、2、4
      */
     struct EncoderSpeedConfig
     {
-        // 编码器每转物理脉冲数
+        // 编码器每转物理脉冲数PPR，（原始线数，无倍频）
         std::uint32_t pulses_per_revolution{0U};
-        // 硬件定时器计数位宽，用于溢出补偿，8-32
+        // 硬件定时器计数位宽，用于溢出补偿，
+            // 算法支持范围8~32，STM32F4实际使用16、32
         std::uint8_t counter_bits{16U};
+        // 正交倍频系数 支持1、2、4
+        std::uint8_t quadrature_gain{4U};
     };
     
     /**
      * @brief 单次update输出采样结果
+     * @param delta_counts 本次计数差分，带符号
+     * @param raw_rpm 原始未滤波转速，RPM
+     * @param filtered_rpm 滑动平均滤波后转速
      */
     struct EncoderSpeedSample
     {
@@ -93,16 +102,17 @@ namespace robot_foc::algorithm
         ~EncoderSpeedEstimator() noexcept = default;
 
         //禁止移动、拷贝
+        /*
         EncoderSpeedEstimator(const EncoderSpeedEstimator&) = delete;
         EncoderSpeedEstimator& operator=(const EncoderSpeedEstimator&) = delete;
         EncoderSpeedEstimator(EncoderSpeedEstimator&&) = delete;
         EncoderSpeedEstimator& operator=(EncoderSpeedEstimator&&) = delete;
-
+        */
         /**
          * @brief 配置转速估计器
          * @param config 配置结构体
          * @retval Ok 配置成功
-         * @retval ErrorInvalidParam pulses_per_revolution为0/counter_bits不在8-32范围
+         * @retval ErrorInvalidParam PPR、计数器位宽、倍频系数或乘法结果非法
          */
         [[nodiscard]] common::ErrorCode configure(const EncoderSpeedConfig& config) noexcept;
 
@@ -113,7 +123,7 @@ namespace robot_foc::algorithm
          * @param[out] sample 输出转速采样；函数失败时sample保持不变
          * @retval Ok 正常执行；首次调用仅建立基线，速度字段为0
          * @retval ErrorNotReady 尚未调用configure()配置
-         * @retval ErrorInvalidParam sample_period <=0
+         * @retval ErrorInvalidParam 计数值或采样周期非法，或转速结果非有限值
          */
         [[nodiscard]] common::ErrorCode update(
             std::uint32_t current_count,
