@@ -18,8 +18,8 @@ namespace robot_foc::common
     using Amperes        =   float;          ///电流，单位：安培（A）
     using Radians        =   float;          ///角度，单位：弧度（Rad）
     using Rpm           =   float;          ///转速，单位：转每分钟（RPM）
+    using MechanicalRad =   float;          ///机械角度，单位：弧度（Rad）
+    using ElectricalRad =   float;          ///电角度，单位：弧度（Rad）
 } // namespace robot_foc::common
-
-
 
 #endif // ROBOT_FOC_COMMON_UNITS_HPP
