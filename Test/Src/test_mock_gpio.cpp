@@ -5,7 +5,7 @@
  * @param gpio 基类引用，外部传入具体实例
  */
 #include "HAL/gpio.hpp"
-#include "COMMON/error_code.hpp"
+#include "error_code.hpp"
 #include "DRIVERS/mock_gpio.hpp"
 #include "test_helper.hpp"
 

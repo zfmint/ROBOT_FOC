@@ -7,6 +7,7 @@
  */
 
 #include "ALGORITHM/encoder_speed.hpp"
+#include "error_code.hpp"
 
 #include <cmath>
 #include <limits>

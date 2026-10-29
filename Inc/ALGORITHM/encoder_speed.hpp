@@ -27,8 +27,8 @@
 #include <cstdint>
 
 #include "ALGORITHM/sliding_average.hpp"
-#include "COMMON/error_code.hpp"
-#include "COMMON/units.hpp"
+#include "error_code.hpp"
+#include "units.hpp"
 
 namespace robot_foc::algorithm
 {

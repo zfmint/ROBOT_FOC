@@ -22,7 +22,7 @@
 #include <cstdint>
 
 #include "HAL/peripheral.hpp"
-#include "COMMON/error_code.hpp"
+#include "error_code.hpp"
 
 namespace robot_foc::hal
 {

@@ -10,6 +10,7 @@
  * @note 状态标志操作非原子、无并发保护；跨ISR/任务访问需外部临界区保护
  */
 #include "HAL/peripheral.hpp"
+#include "error_code.hpp"
 
 namespace robot_foc::hal
 {

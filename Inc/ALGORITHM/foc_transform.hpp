@@ -7,8 +7,9 @@
  *
  * 变换清单：
  *  1. Clarke: 三相Ia,Ib,Ic → Iα,Iβ 静止两相正交
- *  2. Park:   Iα,Iβ → Id,Iq  同步旋转dq
- *  3. InversePark: Vd,Vq → Vα,Vβ
+ *  2. InverseClarke Iα,Iβ → 三相Ia,Ib,Ic
+ *  3. Park:   Iα,Iβ → Id,Iq  同步旋转dq
+ *  4. InversePark: Vd,Vq → Vα,Vβ
  *
  * @author Robot_FOC Project
  * @note
@@ -19,9 +20,8 @@
 #ifndef ROBOT_FOC_ALGORITHM_FOC_TRANSFORM_HPP
 #define ROBOT_FOC_ALGORITHM_FOC_TRANSFORM_HPP
 
-#include <cmath>
-#include "COMMON/units.hpp"
-#include "COMMON/error_code.hpp"
+#include "units.hpp"
+#include "error_code.hpp"
 
 namespace robot_foc::algorithm
 {
@@ -99,33 +99,37 @@ namespace robot_foc::algorithm
      * @brief 等幅值Park变换（电流版本）
      * @param[in] ab_current_in 两相静止坐标系输入
      * @param[out] dq_current_out 两相旋转坐标系输出
+     * @param theta_e 转子电角度
      * @return 错误码
      */
-    [[nodiscard]] common::ErrorCode park_current(const AlphaBetaCurrent& ab_current_in, DQCurrent& dq_current_out) noexcept;
+    [[nodiscard]] common::ErrorCode park_current(const AlphaBetaCurrent& ab_current_in, DQCurrent& dq_current_out, common::ElectricalRad theta_e) noexcept;
 
     /**
      * @brief 等幅值反Park变换（电流版本）
      * @param[in] dq_current_in 两相旋转坐标系输入
      * @param[out] ab_current_out 两相静止坐标系输出
+     * @param theta_e 转子电角度
      * @return 错误码
      */
-    [[nodiscard]] common::ErrorCode inverse_park_current(const DQCurrent& dq_current_in, AlphaBetaCurrent& ab_current_out) noexcept;
+    [[nodiscard]] common::ErrorCode inverse_park_current(const DQCurrent& dq_current_in, AlphaBetaCurrent& ab_current_out, common::ElectricalRad theta_e) noexcept;
 
     /**
      * @brief 等幅值Park变换（电压版本）
      * @param[in] ab_volt_in 两相静止坐标系输入
      * @param[out] dq_volt_out 两相旋转坐标系输出
+     * @param theta_e 转子电角度
      * @return 错误码
      */
-    [[nodiscard]] common::ErrorCode park_volt(const AlphaBetaVolts& ab_volt_in, DQVolts& dq_volt_out) noexcept;
+    [[nodiscard]] common::ErrorCode park_volt(const AlphaBetaVolts& ab_volt_in, DQVolts& dq_volt_out, common::ElectricalRad theta_e) noexcept;
 
     /**
      * @brief 等幅值反Park变换（电压版本）
      * @param[in] dq_volt_in 两相旋转坐标系输入
      * @param[out] ab_volt_out 两相静止坐标系输出
+     * @param theta_e 转子电角度
      * @return 错误码
      */
-    [[nodiscard]] common::ErrorCode inverse_park_volt(const DQVolts& dq_volt_in, AlphaBetaVolts& ab_volt_out) noexcept;
+    [[nodiscard]] common::ErrorCode inverse_park_volt(const DQVolts& dq_volt_in, AlphaBetaVolts& ab_volt_out, common::ElectricalRad theta_e) noexcept;
 } // namespace robot_foc::algorithm
 
 #endif

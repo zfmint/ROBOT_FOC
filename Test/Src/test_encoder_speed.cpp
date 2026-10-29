@@ -8,7 +8,7 @@
 #include <limits>
 
 #include "ALGORITHM/encoder_speed.hpp"
-#include "COMMON/error_code.hpp"
+#include "error_code.hpp"
 #include "mock_encoder_counter.hpp"
 #include "mock_plant.hpp"
 #include "test_helper.hpp"

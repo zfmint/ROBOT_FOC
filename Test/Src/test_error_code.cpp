@@ -8,7 +8,7 @@
 #include <cstring>
 #include <cstdio>
 
-#include "COMMON/error_code.hpp"
+#include "error_code.hpp"
 #include "test_helper.hpp"
 
 

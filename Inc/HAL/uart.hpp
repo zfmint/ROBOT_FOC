@@ -31,7 +31,7 @@
 
 #include "HAL/peripheral.hpp"
 #include "HAL/byte_ring_buffer.hpp"
-#include "COMMON/error_code.hpp"
+#include "error_code.hpp"
 
 namespace robot_foc::hal
 {

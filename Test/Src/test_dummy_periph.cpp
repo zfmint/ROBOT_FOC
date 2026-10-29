@@ -5,7 +5,7 @@
  */
 #include "HAL/peripheral.hpp"
 #include "test_helper.hpp"
-#include "COMMON/error_code.hpp"
+#include "error_code.hpp"
 
 namespace robot_foc::test
 {

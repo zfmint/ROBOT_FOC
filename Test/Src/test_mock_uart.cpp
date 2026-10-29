@@ -5,7 +5,7 @@
  */
 #include "DRIVERS/mock_uart.hpp"
 #include "test_helper.hpp"
-#include "COMMON/error_code.hpp"
+#include "error_code.hpp"
 
 void test_mock_uart()
 {

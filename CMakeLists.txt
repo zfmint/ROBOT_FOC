@@ -59,6 +59,7 @@ endif()
 target_include_directories(robot_hal_core
     PUBLIC
         ${PROJECT_SOURCE_DIR}/Inc
+        ${PROJECT_SOURCE_DIR}/COMMON
 )
 
 ##############################################################################
