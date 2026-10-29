@@ -98,38 +98,38 @@ namespace robot_foc::algorithm
     /**
      * @brief 等幅值Park变换（电流版本）
      * @param[in] ab_current_in 两相静止坐标系输入
-     * @param[out] dq_current_out 两相旋转坐标系输出
      * @param theta_e 转子电角度
+     * @param[out] dq_current_out 两相旋转坐标系输出
      * @return 错误码
      */
-    [[nodiscard]] common::ErrorCode park_current(const AlphaBetaCurrent& ab_current_in, DQCurrent& dq_current_out, common::ElectricalRad theta_e) noexcept;
+    [[nodiscard]] common::ErrorCode park_current(const AlphaBetaCurrent& ab_current_in, common::ElectricalRad theta_e, DQCurrent& dq_current_out) noexcept;
 
     /**
      * @brief 等幅值反Park变换（电流版本）
      * @param[in] dq_current_in 两相旋转坐标系输入
-     * @param[out] ab_current_out 两相静止坐标系输出
      * @param theta_e 转子电角度
+     * @param[out] ab_current_out 两相静止坐标系输出
      * @return 错误码
      */
-    [[nodiscard]] common::ErrorCode inverse_park_current(const DQCurrent& dq_current_in, AlphaBetaCurrent& ab_current_out, common::ElectricalRad theta_e) noexcept;
+    [[nodiscard]] common::ErrorCode inverse_park_current(const DQCurrent& dq_current_in, common::ElectricalRad theta_e, AlphaBetaCurrent& ab_current_out) noexcept;
 
     /**
      * @brief 等幅值Park变换（电压版本）
      * @param[in] ab_volt_in 两相静止坐标系输入
-     * @param[out] dq_volt_out 两相旋转坐标系输出
      * @param theta_e 转子电角度
+     * @param[out] dq_volt_out 两相旋转坐标系输出
      * @return 错误码
      */
-    [[nodiscard]] common::ErrorCode park_volt(const AlphaBetaVolts& ab_volt_in, DQVolts& dq_volt_out, common::ElectricalRad theta_e) noexcept;
+    [[nodiscard]] common::ErrorCode park_volt(const AlphaBetaVolts& ab_volt_in, common::ElectricalRad theta_, DQVolts& dq_volt_oute) noexcept;
 
     /**
      * @brief 等幅值反Park变换（电压版本）
      * @param[in] dq_volt_in 两相旋转坐标系输入
-     * @param[out] ab_volt_out 两相静止坐标系输出
      * @param theta_e 转子电角度
+     * @param[out] ab_volt_out 两相静止坐标系输出
      * @return 错误码
      */
-    [[nodiscard]] common::ErrorCode inverse_park_volt(const DQVolts& dq_volt_in, AlphaBetaVolts& ab_volt_out, common::ElectricalRad theta_e) noexcept;
+    [[nodiscard]] common::ErrorCode inverse_park_volt(const DQVolts& dq_volt_in, common::ElectricalRad theta_e, AlphaBetaVolts& ab_volt_out) noexcept;
 } // namespace robot_foc::algorithm
 
 #endif
