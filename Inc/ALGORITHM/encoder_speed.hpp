@@ -20,13 +20,15 @@
  *  - pulses_per_revolution 上层调用方传入原始 PPR ；本底层类自动做倍频换算
  * @warning 并发访问外部需要临界区保护，内部无同步
  */
+
 #ifndef ROBOT_FOC_ALGORITHM_ENCODER_SPEED_HPP
 #define ROBOT_FOC_ALGORITHM_ENCODER_SPEED_HPP
+
+#include "ALGORITHM/sliding_average.hpp"
 
 #include <cstddef>
 #include <cstdint>
 
-#include "ALGORITHM/sliding_average.hpp"
 #include "error_code.hpp"
 #include "units.hpp"
 

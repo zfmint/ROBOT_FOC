@@ -7,10 +7,11 @@
  */
 
 #include "ALGORITHM/encoder_speed.hpp"
-#include "error_code.hpp"
 
 #include <cmath>
 #include <limits>
+
+#include "error_code.hpp"
 
 namespace robot_foc::algorithm
 {

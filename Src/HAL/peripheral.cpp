@@ -9,6 +9,7 @@
  *  构造 → configure(可选) → init() → 使用外设 → deinit() → 析构
  * @note 状态标志操作非原子、无并发保护；跨ISR/任务访问需外部临界区保护
  */
+
 #include "HAL/peripheral.hpp"
 #include "error_code.hpp"
 

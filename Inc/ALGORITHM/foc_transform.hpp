@@ -17,6 +17,7 @@
  *  - 角度范围不限，内部直接送入sin/cos，由三角函数处理周期
  *  - Clarke 默认等幅值，不是等功率
  */
+
 #ifndef ROBOT_FOC_ALGORITHM_FOC_TRANSFORM_HPP
 #define ROBOT_FOC_ALGORITHM_FOC_TRANSFORM_HPP
 
@@ -98,7 +99,7 @@ namespace robot_foc::algorithm
     /**
      * @brief 等幅值Park变换（电流版本）
      * @param[in] ab_current_in 两相静止坐标系输入
-     * @param theta_e 转子电角度
+     * @param[in] theta_e 转子电角度
      * @param[out] dq_current_out 两相旋转坐标系输出
      * @return 错误码
      */
@@ -107,7 +108,7 @@ namespace robot_foc::algorithm
     /**
      * @brief 等幅值反Park变换（电流版本）
      * @param[in] dq_current_in 两相旋转坐标系输入
-     * @param theta_e 转子电角度
+     * @param[in] theta_e 转子电角度
      * @param[out] ab_current_out 两相静止坐标系输出
      * @return 错误码
      */
@@ -116,16 +117,16 @@ namespace robot_foc::algorithm
     /**
      * @brief 等幅值Park变换（电压版本）
      * @param[in] ab_volt_in 两相静止坐标系输入
-     * @param theta_e 转子电角度
+     * @param[in] theta_e 转子电角度
      * @param[out] dq_volt_out 两相旋转坐标系输出
      * @return 错误码
      */
-    [[nodiscard]] common::ErrorCode park_volt(const AlphaBetaVolts& ab_volt_in, common::ElectricalRad theta_, DQVolts& dq_volt_oute) noexcept;
+    [[nodiscard]] common::ErrorCode park_volt(const AlphaBetaVolts& ab_volt_in, common::ElectricalRad theta_e, DQVolts& dq_volt_out) noexcept;
 
     /**
      * @brief 等幅值反Park变换（电压版本）
      * @param[in] dq_volt_in 两相旋转坐标系输入
-     * @param theta_e 转子电角度
+     * @param[in] theta_e 转子电角度
      * @param[out] ab_volt_out 两相静止坐标系输出
      * @return 错误码
      */
