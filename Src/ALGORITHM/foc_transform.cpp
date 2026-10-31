@@ -8,6 +8,10 @@
  *  - Park变换/反变换需要有电角度计算
  * @note
  *  - Clarke变换公式
+ *  三相电流
+ *      Iα = 2/3 * （Ia - 1/2*Ib - 1/2*Ic）
+ *      Iβ = √3/3 * （Ib - Ic）
+ *  两相电流
  *      Ia + Ib + Ic = 0
  *      Iα = 2/3 * Ia
  *      Iβ = 2/3 * (Ia + 2Ib)/√3
@@ -30,42 +34,52 @@
 namespace robot_foc::algorithm
 {
 
-    constexpr float two_three = 2.0F / 3.0F;
-    constexpr float neghalf = -0.5F;
+    constexpr float TWO_THREE {2.0F / 3.0F};
+    constexpr float NEGHALF {-0.5F};
+    constexpr float HALF {0.5F};
+    constexpr float SQRT3 {1.73205080757F};
 
     [[nodiscard]] common::ErrorCode clarke_current(const ABCCurrent& abc_current_in, AlphaBetaCurrent& ab_current_out) noexcept
     {
-        ab_current_out.alpha_current_ = two_three*abc_current_in.a_current_;
-        ab_current_out.beta_current_ = two_three*(abc_current_in.a_current_+2*abc_current_in.b_current_)/sqrt(3);
-        return common::ErrorCode::Ok;
+        float a_curr = abc_current_in.a_current_;
+        float b_curr = abc_current_in.b_current_;
+        float c_curr = abc_current_in.c_current_;
+        float alpha_out {0.0F};
+        float beta_out {0.0F};
+        if (std::isfinite(a_curr)&&std::isfinite(b_curr)&&std::isfinite(c_curr))
+        {
+            alpha_out = TWO_THREE*(a_curr - HALF*b_curr - HALF*c_curr); 
+            beta_out = SQRT3/3.0F*(b_curr - c_curr);
+            if (std::isfinite(alpha_out)&&std::isfinite(beta_out))
+            {
+                ab_current_out.alpha_current_ = alpha_out;
+                ab_current_out.beta_current_ = beta_out;
+                return common::ErrorCode::Ok;
+            }
+        }
+        return common::ErrorCode::ErrorInvalidParam;
     }
 
     [[nodiscard]] common::ErrorCode inverse_clarke_current(const AlphaBetaCurrent& ab_current_in, ABCCurrent& abc_current_out) noexcept
     {
         abc_current_out.a_current_ = ab_current_in.alpha_current_;
-        abc_current_out.b_current_ = neghalf * ab_current_in.alpha_current_ + (std::sqrt(3) / 2.0F) * ab_current_in.beta_current_;
-        abc_current_out.c_current_ = neghalf * ab_current_in.alpha_current_ - (std::sqrt(3) / 2.0F) * ab_current_in.beta_current_;
+        abc_current_out.b_current_ = NEGHALF * ab_current_in.alpha_current_ + (SQRT3 / 2.0F) * ab_current_in.beta_current_;
+        abc_current_out.c_current_ = NEGHALF * ab_current_in.alpha_current_ - (SQRT3 / 2.0F) * ab_current_in.beta_current_;
         return common::ErrorCode::Ok;
     }
     
-    /**
-     * @brief 等幅值Clarke变换（电压版本）
-     * @param[in] abc_volt_in 三相电压输入
-     * @param[out] ab_volt_out 两相静止坐标系输出
-     * @return 错误码
-     */
     [[nodiscard]] common::ErrorCode clarke_volt(const ABCVolts& abc_volt_in, AlphaBetaVolts& ab_volt_out) noexcept
     {
-        ab_volt_out.alpha_volt_ = two_three*abc_volt_in.a_volt_;
-        ab_volt_out.beta_volt_ = two_three*(abc_volt_in.a_volt_+2*abc_volt_in.b_volt_)/sqrt(3);
+        ab_volt_out.alpha_volt_ = TWO_THREE*(abc_volt_in.a_volt_ - HALF*abc_volt_in.b_volt_ - HALF*abc_volt_in.c_volt_);
+        ab_volt_out.beta_volt_ = SQRT3/3.0F*(abc_volt_in.b_volt_-abc_volt_in.c_volt_);
         return common::ErrorCode::Ok;
     }
 
     [[nodiscard]] common::ErrorCode inverse_clarke_volt(const AlphaBetaVolts& ab_volt_in, ABCVolts& abc_volt_out) noexcept
     {
         abc_volt_out.a_volt_ = ab_volt_in.alpha_volt_;
-        abc_volt_out.b_volt_ = neghalf * ab_volt_in.alpha_volt_ + (std::sqrt(3) / 2.0F) * ab_volt_in.beta_volt_;
-        abc_volt_out.c_volt_ = neghalf * ab_volt_in.alpha_volt_ - (std::sqrt(3) / 2.0F) * ab_volt_in.beta_volt_;
+        abc_volt_out.b_volt_ = NEGHALF * ab_volt_in.alpha_volt_ + (SQRT3 / 2.0F) * ab_volt_in.beta_volt_;
+        abc_volt_out.c_volt_ = NEGHALF * ab_volt_in.alpha_volt_ - (SQRT3 / 2.0F) * ab_volt_in.beta_volt_;
         return common::ErrorCode::Ok;
     }
     

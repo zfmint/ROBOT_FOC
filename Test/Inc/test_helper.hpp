@@ -76,3 +76,14 @@ inline void expect_impl(
     } while (false)
 
 #endif // ROBOT_FOC_TEST_TEST_HELPER_HPP
+
+namespace
+{
+    constexpr float kTolerance{1.0e-4F};
+
+    [[nodiscard]] bool nearly_equal(float lhs, float rhs, float tolerance = kTolerance) noexcept
+    {
+        return std::fabs(lhs - rhs) <= tolerance;
+    }
+}
+

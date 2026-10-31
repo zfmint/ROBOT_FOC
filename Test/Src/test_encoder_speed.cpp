@@ -13,16 +13,6 @@
 #include "mock_plant.hpp"
 #include "test_helper.hpp"
 
-namespace
-{
-    constexpr float kTolerance{1.0e-4F};
-
-    [[nodiscard]] bool nearly_equal(float lhs, float rhs, float tolerance = kTolerance) noexcept
-    {
-        return std::fabs(lhs - rhs) <= tolerance;
-    }
-}
-
 void test_encoder_speed()
 {
     using robot_foc::algorithm::EncoderSpeedConfig;
