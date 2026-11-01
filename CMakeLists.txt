@@ -37,6 +37,7 @@ add_library(robot_hal_core STATIC
     #ALGORITHM算法实现
     Src/ALGORITHM/pid.cpp
     Src/ALGORITHM/encoder_speed.cpp
+    Src/ALGORITHM/foc_transform.cpp
 )
 
 ## robot_hal_core编译选项：生产库关闭异常、RTTI，适配STM32嵌入式
@@ -168,7 +169,8 @@ if(NOT CMAKE_CROSSCOMPILING)
         Test/Src/test_sliding_average.cpp
         # 测速编码器单元测试
         Test/Src/test_encoder_speed.cpp
-
+        # FOC Clarke变换与逆变换、Park变换与逆变换单元测试
+        Test/Src/test_foc_transform.cpp
     )
 
     ## @brief 链接核心库 + mock仿真库

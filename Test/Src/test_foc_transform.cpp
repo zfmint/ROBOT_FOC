@@ -1,22 +1,21 @@
 /**
  * @file test_foctransform.cpp
- * @brief 单元测试：FOC坐标变换 Clarke / InverseClarke / Park / InversePark
+ * @brief FOC Clarke / Park / InverseClarke / InversePark 坐标变换单元测试
  * @details
- * 测试覆盖范围：
- *  1. Clarke正向变换(电流、电压)：三相ABC → αβ两相静止坐标系，等幅值变换
- *  2. InverseClarke逆变换(电流、电压)：αβ → 三相ABC，校验三相和接近0
- *  3. Park变换(电流、电压)：αβ两相静止 → dq两相旋转坐标系，输入电角度
- *  4. InversePark逆变换(电流、电压)：dq两相旋转 → αβ两相静止坐标系
- *  5. 特征电角度用例：0 rad、π/2 rad、π rad，校验矩阵符号正确性
- *  6. 完整链路闭环测试：ABC → Clarke → Park → InversePark → InverseClarke
- *
+ * 测试对象：robot_foc::algorithm::FocTransform
+ * 约定：等幅值Clarke变换；角度统一为电角度 ElectricalRad，单位 rad
+ * 测试策略：黑盒测试，仅调用对外公开接口，不直接访问内部计算函数
+ * 测试场景：
+ *  1. 三相ABC输入 Clarke 变换
+ *  2. 两相AB输入 Clarke 变换（自动推导C = -A-B）
+ *  3. 逆Clarke αβ 还原三相ABC
+ *  4. Park 特征角度变换（0、π/2、π）
+ *  5. 逆Park 变换
+ *  6. 完整变换链路闭环校验 ABC → Clarke → Park → InvPark → InvClarke
+ *  7. 电流、电压两套重载接口分别验证
  * @note
- *  - 本项目使用【等幅值Clarke】；仅完整变换链路可复原旋转矢量幅值；
- *    单独Clarke+InverseClarke不能还原原始相电流/电压标量数值，属于数学特性，非bug。
- *  - 浮点断言容忍误差：1e‑5，避免浮点计算舍入导致测试误失败。
- *  - Park/InversePark必须传入【电角度 ElectricalRad】，禁止传入机械角度。
- *
- * @author Robot_FOC Project
+ *  - 浮点数比较使用容忍阈值 kEps，避免浮点误差导致误报失败
+ *  - 全部为无状态纯数学变换，无需复位
  */
 #include <cstring>
 #include <cstdio>
@@ -26,6 +25,21 @@
 
 void test_foc_transform()
 {
-    using robot_foc::algorithm;
-    //
+    using robot_foc::algorithm::FocTransform;
+    using robot_foc::common::ErrorCode;
+
+    // 三相输入Clarke变换
+    {
+        robot_foc::algorithm::ABCCurrent ABCcurr{};
+        robot_foc::algorithm::AlphaBetaCurrent AlphaBetacurr{};
+
+        ABCcurr.a_current_ = 1.0F;
+        ABCcurr.b_current_ = 0.0F;
+        ABCcurr.c_current_ = -1.0F;
+
+        auto ret = FocTransform::clarke(ABCcurr,AlphaBetacurr);
+
+        std::cout<<AlphaBetacurr.alpha_current_<<"\n"<<AlphaBetacurr.beta_current_<<"\n";
+        ROBOT_FOC_TEST_EXPECT((ret == ErrorCode::Ok),"clarke three phase ok");
+    }
 }

@@ -17,12 +17,26 @@
 #ifndef ROBOT_FOC_TEST_TEST_HELPER_HPP
 #define ROBOT_FOC_TEST_TEST_HELPER_HPP
 
+#include <cmath>
 #include <cstddef>
 #include <cstdlib>
 #include <iostream>
 
 // 全局测试失败计数，inline保证多文件包含不重复定义
 inline std::size_t test_failure_count{0U};
+// 全局浮点数大小判断范围
+inline constexpr float kTolerance{1.0e-4F};
+
+/**
+ * @brief 判断两个浮点数做差是否小于规定的值（近似相等）
+ * @param lhs 浮点左值
+ * @param rhs 浮点右值
+ * @return 1相等，0不等
+ */
+[[nodiscard]] inline bool nearly_equal(float lhs, float rhs, float tolerance = kTolerance) noexcept
+{
+    return std::fabs(lhs - rhs) <= tolerance;
+}
 
 /**
  * @brief 测试断言底层实现函数
@@ -76,14 +90,3 @@ inline void expect_impl(
     } while (false)
 
 #endif // ROBOT_FOC_TEST_TEST_HELPER_HPP
-
-namespace
-{
-    constexpr float kTolerance{1.0e-4F};
-
-    [[nodiscard]] bool nearly_equal(float lhs, float rhs, float tolerance = kTolerance) noexcept
-    {
-        return std::fabs(lhs - rhs) <= tolerance;
-    }
-}
-

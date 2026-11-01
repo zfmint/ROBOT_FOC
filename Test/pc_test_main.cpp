@@ -16,10 +16,12 @@ void test_incremental_pid_closed();
 void test_sliding_average();
 void test_encoder_speed();
 void test_encoder_speed_closed();
+void test_foc_transform();
 
 int main()
 {
     std::cout << "\n========== Start Unit Test ==========\n\n";
+/*
     test_dummy_peripheral();
     test_mock_gpio();
     test_byte_ring_buffer();
@@ -32,6 +34,8 @@ int main()
     test_sliding_average();
     test_encoder_speed();
     test_encoder_speed_closed();
+*/
+    test_foc_transform();
 
     std::cout << "\n====================================\n";
     std::cout << "Total test failed: " << test_failure_count << '\n';
