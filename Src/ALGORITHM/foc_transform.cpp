@@ -1,32 +1,49 @@
 /**
  * @file foc_transform.cpp
- * @brief FOC变换实现
+ * @brief FOC坐标变换模块实现
+ *
  * @details
- *  - Clarke变换输入时三相电流/电压结构体，但可以只传输两相，由Clarke算法模块
- *      算出第三相
- *  - Clarke反变换直接输出三相电流/电压
- *  - Park变换/反变换需要有电角度计算
+ *  本模块实现等幅值约定下的 Clarke / 逆Clarke、Park / 逆Park 坐标变换，
+ *  用于永磁同步电机FOC控制链路，电压、电流变换共用同一套变换公式。
+ *
+ *  - Clarke变换：支持两种输入模式
+ *    1. 三相输入模式：传入独立采样 Ia、Ib、Ic，不强制满足 Ia+Ib+Ic=0，可处理零序、不平衡分量
+ *    2. 两相输入模式：仅传入 Ia、Ib，数学约束 Ia+Ib+Ic=0，内部推导 Ic = -Ia - Ib，适用于双电阻采样方案
+ *  - 逆Clarke变换：αβ域矢量还原为三相量，输出 Ia、Ib、Ic
+ *  - Park变换：静止αβ坐标系 → 旋转dq坐标系，输入电角度 θ_e
+ *  - 逆Park变换：旋转dq坐标系 → 静止αβ坐标系，输入电角度 θ_e
+ *
  * @note
- *  - Clarke变换公式
- *  三相电流
- *      Iα = 2/3 * （Ia - 1/2*Ib - 1/2*Ic）
- *      Iβ = 2/3 * （Ib - Ic） / √3
- *  两相电流
- *      Ia + Ib + Ic = 0
- *      Iα = 2/3 * Ia
- *      Iβ = 2/3 * (Ia + 2Ib) / √3
- *  -  Clarke逆变换公式
- *      Ia = Iα
- *      Ib = -1/2 * Ia + (√3/2) * Iβ
- *      Ic = -1/2 * Ia - (√3/2) * Iβ
- *  - Park变换公式
- *      Id = Iα*cosθ+Iβ*sinθ
- *      Iq = -Iα*sinθ+Iβ*cosθ
- *  - Park逆变换公式
- *      Iα = Id*cosθ-Iq*sinθ
- *      Iβ = Id*sinθ+Iq*cosθ
+ *  【变换约定：等幅值 Clarke】
+ *  变换前后相电压/相电流峰值保持相等；整套变换系数配对，禁止与等功率Clarke混用。
+ *
+ *  Clarke 三相输入公式：
+ *  Iα = 2/3 * (Ia - 1/2*Ib - 1/2*Ic)
+ *  Iβ = 2/3 * (Ib - Ic) / √3
+ *
+ *  Clarke 两相输入（约束 Ia+Ib+Ic=0）：
+ *  Iα = 2/3 * Ia
+ *  Iβ = 2/3 * (Ia + 2*Ib) / √3
+ *
+ *  逆Clarke（αβ → abc，等幅值配套）：
+ *  Ia = Iα
+ *  Ib = -1/2 * Iα + (√3/2) * Iβ
+ *  Ic = -1/2 * Iα - (√3/2) * Iβ
+ *
+ *  Park 变换（αβ → dq）：
+ *  Id = Iα*cosθ_e + Iβ*sinθ_e
+ *  Iq = -Iα*sinθ_e + Iβ*cosθ_e
+ *
+ *  逆Park 变换（dq → αβ）：
+ *  Iα = Id*cosθ_e - Iq*sinθ_e
+ *  Iβ = Id*sinθ_e + Iq*cosθ_e
+ *
+ *  @attention
+ *  1. 两相Clarke仅在硬件为双电阻采样、三相和为0的前提下使用；存在零序/不平衡时必须使用三相输入版本
+ *  2. θ_e 为电角度，单位 rad，角度定义：d轴相对α轴的夹角
+ *  3. 本套为等幅值体系，若切换等功率Clarke，正向、逆Clarke系数必须同步替换，不可交叉混用
+ *  4. Park、逆Park为纯旋转变换，矢量模长不缩放，等幅值/等功率两套体系可共用这组公式
  */
-
 #include "ALGORITHM/foc_transform.hpp"
 
 #include <cmath>
@@ -55,8 +72,8 @@ namespace
         float& beta_output
     ) noexcept
     {
-        alpha_output = TWO_THREE*(a_input - HALF*b_input - HALF*c_input); 
-        beta_output = TWO_THREE*(b_input - c_input)/SQRT3;
+        alpha_output = TWO_THREE * (a_input - HALF * b_input - HALF * c_input);
+        beta_output  = TWO_THREE * ( (SQRT3 / 2.0F) * b_input - (SQRT3 / 2.0F) * c_input );
     }
 
     /**
@@ -75,7 +92,7 @@ namespace
     ) noexcept
     {
         alpha_output = a_input;
-        beta_output = TWO_THREE*(a_input+2*b_input)/SQRT3;
+        beta_output = (a_input + 2.0F * b_input) / SQRT3;
     }
 
     /**
