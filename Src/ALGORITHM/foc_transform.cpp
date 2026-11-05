@@ -163,7 +163,7 @@ namespace
 
 namespace robot_foc::algorithm
 {
-    [[nodiscard]] common::ErrorCode FocTransform::clarke(const ABCCurrent& abc_current_in, AlphaBetaCurrent& ab_current_out) noexcept
+    [[nodiscard]] common::ErrorCode FocTransform::clarke(const common::ABCCurrent& abc_current_in, common::AlphaBetaCurrent& ab_current_out) noexcept
     {
         common::Amperes a_curr = abc_current_in.a_current_;
         common::Amperes b_curr = abc_current_in.b_current_;
@@ -183,7 +183,7 @@ namespace robot_foc::algorithm
         return common::ErrorCode::ErrorInvalidParam;
     }
 
-    [[nodiscard]] common::ErrorCode FocTransform::clarke(const ABCurrent& ab_current_in, AlphaBetaCurrent& ab_current_out) noexcept
+    [[nodiscard]] common::ErrorCode FocTransform::clarke(const common::ABCurrent& ab_current_in, common::AlphaBetaCurrent& ab_current_out) noexcept
     {
         common::Amperes a_curr = ab_current_in.a_current_;
         common::Amperes b_curr = ab_current_in.b_current_;
@@ -202,7 +202,7 @@ namespace robot_foc::algorithm
         return common::ErrorCode::ErrorInvalidParam;
     }
 
-    [[nodiscard]] common::ErrorCode FocTransform::clarke(const ABCVoltage& abc_voltage_in, AlphaBetaVoltage& ab_voltage_out) noexcept
+    [[nodiscard]] common::ErrorCode FocTransform::clarke(const common::ABCVoltage& abc_voltage_in, common::AlphaBetaVoltage& ab_voltage_out) noexcept
     {
         common::Volts a_volt = abc_voltage_in.a_volt_;
         common::Volts b_volt = abc_voltage_in.b_volt_;
@@ -222,7 +222,7 @@ namespace robot_foc::algorithm
         return common::ErrorCode::ErrorInvalidParam;
     }
     
-    [[nodiscard]] common::ErrorCode FocTransform::clarke(const ABVoltage& ab_voltage_in, AlphaBetaVoltage& ab_voltage_out) noexcept
+    [[nodiscard]] common::ErrorCode FocTransform::clarke(const common::ABVoltage& ab_voltage_in, common::AlphaBetaVoltage& ab_voltage_out) noexcept
     {
         common::Volts a_volt = ab_voltage_in.a_volt_;
         common::Volts b_volt = ab_voltage_in.b_volt_;
@@ -241,7 +241,7 @@ namespace robot_foc::algorithm
         return common::ErrorCode::ErrorInvalidParam;
     }
 
-    [[nodiscard]] common::ErrorCode FocTransform::inverse_clarke(const AlphaBetaCurrent& alphabeta_current_in, ABCCurrent& abc_current_out) noexcept
+    [[nodiscard]] common::ErrorCode FocTransform::inverse_clarke(const common::AlphaBetaCurrent& alphabeta_current_in, common::ABCCurrent& abc_current_out) noexcept
     {
         common::Amperes alpha_curr_in = alphabeta_current_in.alpha_current_;
         common::Amperes beta_curr_in = alphabeta_current_in.beta_current_;
@@ -262,7 +262,7 @@ namespace robot_foc::algorithm
         return common::ErrorCode::ErrorInvalidParam;
     }
 
-    [[nodiscard]] common::ErrorCode FocTransform::inverse_clarke(const AlphaBetaVoltage& alphabeta_voltage_in, ABCVoltage& abc_voltage_out) noexcept
+    [[nodiscard]] common::ErrorCode FocTransform::inverse_clarke(const common::AlphaBetaVoltage& alphabeta_voltage_in, common::ABCVoltage& abc_voltage_out) noexcept
     {
         common::Volts alpha_volt_in = alphabeta_voltage_in.alpha_volt_;
         common::Volts beta_volt_in = alphabeta_voltage_in.beta_volt_;
@@ -283,7 +283,7 @@ namespace robot_foc::algorithm
         return common::ErrorCode::ErrorInvalidParam;
     }
 
-    [[nodiscard]] common::ErrorCode FocTransform::park(const AlphaBetaCurrent& alphabeta_current_in, const common::ElectricalRad theta_e, DQCurrent& dq_current_out) noexcept
+    [[nodiscard]] common::ErrorCode FocTransform::park(const common::AlphaBetaCurrent& alphabeta_current_in, const common::ElectricalRad theta_e, common::DQCurrent& dq_current_out) noexcept
     {
         common::Amperes alpha_curr_in = alphabeta_current_in.alpha_current_;
         common::Amperes beta_curr_in = alphabeta_current_in.beta_current_;
@@ -303,7 +303,7 @@ namespace robot_foc::algorithm
         return common::ErrorCode::ErrorInvalidParam;
     }
 
-    [[nodiscard]] common::ErrorCode FocTransform::park(const AlphaBetaVoltage& alphabeta_voltage_in, const common::ElectricalRad theta_e, DQVoltage& dq_voltage_out) noexcept
+    [[nodiscard]] common::ErrorCode FocTransform::park(const common::AlphaBetaVoltage& alphabeta_voltage_in, const common::ElectricalRad theta_e, common::DQVoltage& dq_voltage_out) noexcept
     {
         common::Volts alpha_volt_in = alphabeta_voltage_in.alpha_volt_;
         common::Volts beta_volt_in = alphabeta_voltage_in.beta_volt_;
@@ -323,7 +323,7 @@ namespace robot_foc::algorithm
         return common::ErrorCode::ErrorInvalidParam;
     }
 
-    [[nodiscard]] common::ErrorCode FocTransform::inverse_park(const DQCurrent& dq_current_in, const common::ElectricalRad theta_e, AlphaBetaCurrent& alphabeta_current_out) noexcept
+    [[nodiscard]] common::ErrorCode FocTransform::inverse_park(const common::DQCurrent& dq_current_in, const common::ElectricalRad theta_e, common::AlphaBetaCurrent& alphabeta_current_out) noexcept
     {
         common::Amperes d_curr_in = dq_current_in.d_current_;
         common::Amperes q_curr_in = dq_current_in.q_current_;
@@ -343,7 +343,7 @@ namespace robot_foc::algorithm
         return common::ErrorCode::ErrorInvalidParam;
     }
 
-    [[nodiscard]] common::ErrorCode FocTransform::inverse_park(const DQVoltage& dq_voltage_in, const common::ElectricalRad theta_e, AlphaBetaVoltage& alphabeta_voltage_out) noexcept
+    [[nodiscard]] common::ErrorCode FocTransform::inverse_park(const common::DQVoltage& dq_voltage_in, const common::ElectricalRad theta_e, common::AlphaBetaVoltage& alphabeta_voltage_out) noexcept
     {
         common::Volts d_volt_in = dq_voltage_in.d_volt_;
         common::Volts q_volt_in = dq_voltage_in.q_volt_;

@@ -31,8 +31,8 @@ void test_foc_transform()
 
     // 三相输入Clarke变换
     {
-        robot_foc::algorithm::ABCCurrent ABCcurr{};
-        robot_foc::algorithm::AlphaBetaCurrent AlphaBetacurr{};
+        robot_foc::common::ABCCurrent ABCcurr{};
+        robot_foc::common::AlphaBetaCurrent AlphaBetacurr{};
 
         ABCcurr.a_current_ = 1.0F;
         ABCcurr.b_current_ = 0.0F;
@@ -47,8 +47,8 @@ void test_foc_transform()
 
     // 两相输入Clarke变换
     {
-        robot_foc::algorithm::ABCurrent ABcurr{};
-        robot_foc::algorithm::AlphaBetaCurrent AlphaBetacurr{};
+        robot_foc::common::ABCurrent ABcurr{};
+        robot_foc::common::AlphaBetaCurrent AlphaBetacurr{};
 
         ABcurr.a_current_ = 1.0F;
         ABcurr.b_current_ = 0.0F;
@@ -64,8 +64,8 @@ void test_foc_transform()
     {
         constexpr float PI = 3.14159265358979323846F;
         constexpr float HALF_PI = PI / 2.0F;
-        robot_foc::algorithm::AlphaBetaCurrent AlphaBetacurr{};
-        robot_foc::algorithm::DQCurrent DQcurr{};
+        robot_foc::common::AlphaBetaCurrent AlphaBetacurr{};
+        robot_foc::common::DQCurrent DQcurr{};
         ElectricalRad theta_1{0.0F};
         ElectricalRad theta_2{HALF_PI};
         ElectricalRad theta_3{PI};
@@ -91,8 +91,8 @@ void test_foc_transform()
 
     // Park逆变换
     {
-        robot_foc::algorithm::DQCurrent DQcurr{};
-        robot_foc::algorithm::AlphaBetaCurrent AlphaBetacurr{};
+        robot_foc::common::DQCurrent DQcurr{};
+        robot_foc::common::AlphaBetaCurrent AlphaBetacurr{};
         ElectricalRad theta{0.0F};
 
         DQcurr.d_current_ = 1.0F;
@@ -108,11 +108,11 @@ void test_foc_transform()
 
     // 完整变换链路闭环校验 ABC → Clarke → Park → InvPark → InvClarke
     {
-        robot_foc::algorithm::ABCCurrent ABCcurr_1{};
-        robot_foc::algorithm::AlphaBetaCurrent AlphaBetacurr_1{};
-        robot_foc::algorithm::DQCurrent DQcurr{};
-        robot_foc::algorithm::AlphaBetaCurrent AlphaBetacurr_2{};
-        robot_foc::algorithm::ABCCurrent ABCcurr_2{};
+        robot_foc::common::ABCCurrent ABCcurr_1{};
+        robot_foc::common::AlphaBetaCurrent AlphaBetacurr_1{};
+        robot_foc::common::DQCurrent DQcurr{};
+        robot_foc::common::AlphaBetaCurrent AlphaBetacurr_2{};
+        robot_foc::common::ABCCurrent ABCcurr_2{};
         ElectricalRad theta{0.0F};
 
         ABCcurr_1.a_current_ = 1.0F;
@@ -151,8 +151,8 @@ void test_foc_transform()
 
     // 电压重载测试
     {
-        robot_foc::algorithm::ABCVoltage ABCvolt{};
-        robot_foc::algorithm::AlphaBetaVoltage AlphaBetavolt{};
+        robot_foc::common::ABCVoltage ABCvolt{};
+        robot_foc::common::AlphaBetaVoltage AlphaBetavolt{};
 
         ABCvolt.a_volt_ = 1.0F;
         ABCvolt.b_volt_ = 0.0F;

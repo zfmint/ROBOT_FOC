@@ -17,6 +17,7 @@ void test_sliding_average();
 void test_encoder_speed();
 void test_encoder_speed_closed();
 void test_foc_transform();
+void test_svpwm();
 
 int main()
 {
@@ -34,8 +35,10 @@ int main()
     test_sliding_average();
     test_encoder_speed();
     test_encoder_speed_closed();
-*/
     test_foc_transform();
+
+*/
+    test_svpwm();
 
     std::cout << "\n====================================\n";
     std::cout << "Total test failed: " << test_failure_count << '\n';

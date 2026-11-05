@@ -23,82 +23,10 @@
 
 #include "units.hpp"
 #include "error_code.hpp"
+#include "control_type.hpp"
 
 namespace robot_foc::algorithm
 {
-    /**
-     * @brief 三相电流结构体 A/B/C
-     */
-    struct ABCCurrent
-    {
-        common::Amperes a_current_ = 0.0F;
-        common::Amperes b_current_ = 0.0F;
-        common::Amperes c_current_ = 0.0F;
-    };
-
-    /**
-     * @brief 三相电压结构体 A/B/C
-     */    struct ABCVoltage
-    {
-        common::Volts a_volt_ = 0.0F;
-        common::Volts b_volt_ = 0.0F;
-        common::Volts c_volt_ = 0.0F;
-    };
-
-    /**
-     * @brief 两相AB电流结构体，仅A、B两相；C相由C = -A‑B推导
-     */
-    struct ABCurrent
-    {
-        common::Amperes a_current_ = 0.0F;
-        common::Amperes b_current_ = 0.0F;
-    };
-    
-    /**
-     * @brief 两相AB电压结构体，仅A、B两相；C相由C = -A‑B推导
-     */
-    struct ABVoltage
-    {
-        common::Volts a_volt_ = 0.0F;
-        common::Volts b_volt_ = 0.0F;
-    };
-
-    /**
-     * @brief α‑β静止两相正交电流
-     */
-    struct AlphaBetaCurrent
-    {
-        common::Amperes alpha_current_ = 0.0F;
-        common::Amperes beta_current_ = 0.0F;
-    };
-
-    /**
-     * @brief d‑q旋转坐标系电流
-     */
-    struct DQCurrent
-    {
-        common::Amperes d_current_ = 0.0F;
-        common::Amperes q_current_ = 0.0F;
-    };
-    
-    /**
-     * @brief α‑β静止两相正交电压
-     */
-    struct AlphaBetaVoltage
-    {
-        common::Volts alpha_volt_ = 0.0F;
-        common::Volts beta_volt_ = 0.0F;
-    };
-
-    /**
-     * @brief d‑q旋转坐标系电压
-     */
-    struct DQVoltage
-    {
-        common::Volts d_volt_ = 0.0F;
-        common::Volts q_volt_ = 0.0F;
-    };
-
     /**
      * @brief FOC坐标变换静态工具类
      * @details 全部为无状态静态数学函数，不可实例化，禁止拷贝移动
@@ -122,28 +50,28 @@ namespace robot_foc::algorithm
          * @param[out] alphabeta_current_out αβ两相静止坐标系电流输出
          * @return 错误码
          */
-        [[nodiscard]] static common::ErrorCode clarke(const ABCCurrent& abc_current_in, AlphaBetaCurrent& alphabeta_current_out) noexcept;
+        [[nodiscard]] static common::ErrorCode clarke(const common::ABCCurrent& abc_current_in, common::AlphaBetaCurrent& alphabeta_current_out) noexcept;
         /**
          * @brief 等幅值Clarke变换：三相ABC电压 → αβ静止两相电压
          * @param[in] abc_volt_in 三相ABC电压输入
          * @param[out] alphabeta_volt_out αβ两相静止坐标系电压输出
          * @return 错误码
          */
-        [[nodiscard]] static common::ErrorCode clarke(const ABCVoltage& abc_volt_in, AlphaBetaVoltage& alphabeta_volt_out) noexcept;
+        [[nodiscard]] static common::ErrorCode clarke(const common::ABCVoltage& abc_volt_in, common::AlphaBetaVoltage& alphabeta_volt_out) noexcept;
         /**
          * @brief 等幅值Clarke变换：两相AB电流 → αβ静止两相电流（内部自动计算C = -A‑B）
          * @param[in] ab_current_in 两相AB电流输入
          * @param[out] alphabeta_current_out αβ两相静止坐标系电流输出
          * @return 错误码
          */
-        [[nodiscard]] static common::ErrorCode clarke(const ABCurrent& ab_current_in, AlphaBetaCurrent& alphabeta_current_out) noexcept;
+        [[nodiscard]] static common::ErrorCode clarke(const common::ABCurrent& ab_current_in, common::AlphaBetaCurrent& alphabeta_current_out) noexcept;
         /**
          * @brief 等幅值Clarke变换：两相AB电压 → αβ静止两相电压（内部自动计算C = -A‑B）
          * @param[in] ab_volt_in 两相AB电压输入
          * @param[out] alphabeta_volt_out αβ两相静止坐标系电压输出
          * @return 错误码
          */        
-        [[nodiscard]] static common::ErrorCode clarke(const ABVoltage& ab_volt_in, AlphaBetaVoltage& alphabeta_volt_out) noexcept;
+        [[nodiscard]] static common::ErrorCode clarke(const common::ABVoltage& ab_volt_in, common::AlphaBetaVoltage& alphabeta_volt_out) noexcept;
 
         /**
          * @brief 等幅值逆Clarke变换：αβ静止两相电流 → 三相ABC电流
@@ -151,14 +79,14 @@ namespace robot_foc::algorithm
          * @param[out] abc_current_out 三相ABC电流输出
          * @return 错误码
          */
-        [[nodiscard]] static common::ErrorCode inverse_clarke(const AlphaBetaCurrent& alphabeta_current_in, ABCCurrent& abc_current_out) noexcept;
+        [[nodiscard]] static common::ErrorCode inverse_clarke(const common::AlphaBetaCurrent& alphabeta_current_in, common::ABCCurrent& abc_current_out) noexcept;
         /**
          * @brief 等幅值逆Clarke变换：αβ静止两相电压 → 三相ABC电压
          * @param[in] alphabeta_volt_in αβ两相静止坐标系电压输入
          * @param[out] abc_volt_out 三相ABC电压输出
          * @return 错误码
          */        
-        [[nodiscard]] static common::ErrorCode inverse_clarke(const AlphaBetaVoltage& alphabeta_volt_in, ABCVoltage& abc_volt_out) noexcept;
+        [[nodiscard]] static common::ErrorCode inverse_clarke(const common::AlphaBetaVoltage& alphabeta_volt_in, common::ABCVoltage& abc_volt_out) noexcept;
 
         /**
          * @brief Park变换：αβ静止两相电流 → dq旋转坐标系电流
@@ -167,7 +95,7 @@ namespace robot_foc::algorithm
          * @param[out] dq_current_out d‑q旋转坐标系电流输出
          * @return 错误码
          */
-        [[nodiscard]] static common::ErrorCode park(const AlphaBetaCurrent& alphabeta_current_in, const common::ElectricalRad theta_e, DQCurrent& dq_current_out) noexcept;
+        [[nodiscard]] static common::ErrorCode park(const common::AlphaBetaCurrent& alphabeta_current_in, const common::ElectricalRad theta_e, common::DQCurrent& dq_current_out) noexcept;
         /**
          * @brief Park变换：αβ静止两相电压 → dq旋转坐标系电压
          * @param[in] alphabeta_volt_in αβ两相静止坐标系电压输入
@@ -175,7 +103,7 @@ namespace robot_foc::algorithm
          * @param[out] dq_volt_out d‑q旋转坐标系电压输出
          * @return 错误码
          */        
-        [[nodiscard]] static common::ErrorCode park(const AlphaBetaVoltage& alphabeta_volt_in, const common::ElectricalRad theta_e, DQVoltage& dq_volt_out) noexcept;
+        [[nodiscard]] static common::ErrorCode park(const common::AlphaBetaVoltage& alphabeta_volt_in, const common::ElectricalRad theta_e, common::DQVoltage& dq_volt_out) noexcept;
 
         /**
          * @brief 逆Park变换：dq旋转坐标系电流 → αβ静止两相电流
@@ -184,7 +112,7 @@ namespace robot_foc::algorithm
          * @param[out] alphabeta_current_out αβ两相静止坐标系电流输出
          * @return 错误码
          */
-        [[nodiscard]] static common::ErrorCode inverse_park(const DQCurrent& dq_current_in, const common::ElectricalRad theta_e, AlphaBetaCurrent& alphabeta_current_out) noexcept;
+        [[nodiscard]] static common::ErrorCode inverse_park(const common::DQCurrent& dq_current_in, const common::ElectricalRad theta_e, common::AlphaBetaCurrent& alphabeta_current_out) noexcept;
         /**
          * @brief 逆Park变换：dq旋转坐标系电压 → αβ静止两相电压
          * @param[in] dq_volt_in d‑q旋转坐标系电压输入
@@ -192,7 +120,7 @@ namespace robot_foc::algorithm
          * @param[out] alphabeta_volt_out αβ两相静止坐标系电压输出
          * @return 错误码
          */        
-        [[nodiscard]] static common::ErrorCode inverse_park(const DQVoltage& dq_volt_in, const common::ElectricalRad theta_e, AlphaBetaVoltage& alphabeta_volt_out) noexcept;
+        [[nodiscard]] static common::ErrorCode inverse_park(const common::DQVoltage& dq_volt_in, const common::ElectricalRad theta_e, common::AlphaBetaVoltage& alphabeta_volt_out) noexcept;
     };
 } // namespace robot_foc::algorithm
 
