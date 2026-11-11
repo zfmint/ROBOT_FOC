@@ -31,7 +31,7 @@ namespace robot_foc::algorithm
      * @brief FOC坐标变换静态工具类
      * @details 全部为无状态静态数学函数，不可实例化，禁止拷贝移动
      */
-    class FocTransform
+    class FocTransform final
     {
     private:
 

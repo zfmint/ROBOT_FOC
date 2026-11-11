@@ -28,7 +28,7 @@ namespace robot_foc::algorithm
      * @class SlidingAverage
      * @brief 固定窗口滑动平均滤波
      */
-    class SlidingAverage
+    class SlidingAverage final
     {
         static_assert(Capacity >= 2U,"SlidingAverage: Capacity must >= 2");
 

@@ -33,7 +33,7 @@ namespace robot_foc::algorithm
     /**
      * @brief 位置式Pid控制器
      */
-    class PositionalPid
+    class PositionalPid final
     {
     private:
         float kp_{0.0F};  //比例系数
@@ -123,7 +123,7 @@ namespace robot_foc::algorithm
     /**
      * @brief 增量式Pid控制器
      */
-    class IncrementalPid
+    class IncrementalPid final
     {
     private:
         float kp_{0.0F};  //比例系数

@@ -60,7 +60,7 @@ namespace robot_foc::algorithm
         float t0_ratio_;
     };
 
-    class Svpwm
+    class Svpwm final
     {
     private:
         /**

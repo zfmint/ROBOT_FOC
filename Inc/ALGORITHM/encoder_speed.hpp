@@ -67,7 +67,7 @@ namespace robot_foc::algorithm
         common::Rpm filtered_rpm{0.0F};
     };
     
-    class EncoderSpeedEstimator
+    class EncoderSpeedEstimator final
     {
     private:
         /**
