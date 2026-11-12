@@ -9,7 +9,6 @@
  * @author Robot_FOC Project
  * @note 接口详细文档参见 pid.hpp；本文件仅实现，不对外暴露API。
  */
-
 #include "ALGORITHM/pid.hpp"
 
 namespace robot_foc::algorithm

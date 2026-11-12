@@ -129,36 +129,20 @@ namespace robot_foc::algorithm
         Svpwm& operator=(Svpwm&&) = delete;
 
         /**
-         * @brief αβ电压矢量六边形限幅
-         * @param[in]  alphabeta_in  原始αβ参考电压矢量
-         * @param[in]  v_bus  直流母线电压
-         * @param[out] alphabeta_out 限幅后αβ电压矢量
-         * @retval common::ErrorCode::Ok 限幅完成，矢量在线性区或已钳位
-         * @retval common::ErrorCode::ErrorInvalidParam 输入非法
-         * @note 六边形I区限幅；矢量超出六边形边界会缩放，**可能改变矢量角度**。
-         * 若需要保持矢量角度不变，请使用圆形内切圆限幅。
-         */
-        [[nodiscard]] static common::ErrorCode voltage_limit(
-            const common::AlphaBetaVoltage& alphabeta_in,
-            const common::Volts v_bus,
-            common::AlphaBetaVoltage& alphabeta_out
-        ) noexcept;
-
-        /**
          * @brief SVPWM主计算：αβ电压矢量 + 母线电压 → 三相占空比
          * @param[in]  alphabeta_in 静止坐标系αβ参考电压矢量（限幅后）
          * @param[in]  v_bus        直流母线电压Vbus
          * @param[out] duty_out     输出三相归一化占空比
          * @retval common::ErrorCode::Ok 计算成功
          * @retval common::ErrorCode::ErrorInvalidParam Vbus非法、输入矢量异常
+         * @pre alphabeta_in 必须已经由 VoltageLimit 完成限幅
          * @note
-         *  - 输入：电压矢量,内部会完成限幅
+         *  - 输入：电压矢量
          *  - 调制方式：七段式对称SVPWM，零矢量居中
-         *  - 输入电压指令要求先完成限幅
          *  - 输出占空比需要结合PWM重装值换算为比较寄存器值
          *  - 不含死区补偿、最小脉宽处理
          */
-            [[nodiscard]] static common::ErrorCode svpwm_calculate(
+        [[nodiscard]] static common::ErrorCode svpwm_calculate(
             const common::AlphaBetaVoltage& alphabeta_in,
             common::Volts v_bus,
             SvpwmDuty& duty_out

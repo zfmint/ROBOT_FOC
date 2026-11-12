@@ -8,9 +8,8 @@
  *
  * @note
  *  1. 依赖母线电压Vbus进行归一化计算；
- *  2. 辅助计算函数放置于匿名命名空间内，对外不可见；
- *  3. 与foc_transform保持一致，全程使用等幅值变换体系。
- *  4. 扇区换算公式
+ *  2. 与foc_transform保持一致，全程使用等幅值变换体系。
+ *  3. 扇区换算公式
  * @verbatim
  * Uα' = Uα * cosθ - Uβ * sinθ
  * Uβ' = Uα * sinθ + Uβ * cosθ
@@ -40,10 +39,6 @@
  *  240°    	Y=0     	V
  *  300°       	Z=0     	VI
  * @endverbatim
- *  7. 六边形限幅公式
- *  Umax(θ) = (Vdc/√3)/(cos(θ-30°))
- * @endverbatim
- * @author Robot_FOC Project
  */
 #include "ALGORITHM/svpwm.hpp"
 
@@ -254,102 +249,6 @@ namespace robot_foc::algorithm
         return common::ErrorCode::ErrorInvalidParam;
     }
 
-    [[nodiscard]] common::ErrorCode Svpwm::voltage_limit(
-        const common::AlphaBetaVoltage& alphabeta_in,
-        const common::Volts v_bus,
-        common::AlphaBetaVoltage& alphabeta_out
-    ) noexcept
-    {
-        const common::AlphaBetaVoltage& voltage_in = alphabeta_in;
-        common::AlphaBetaVoltage rotated_voltage {};
-        std::uint8_t sector = 0U;
-        float t1 {0.0F};
-        float t2 {0.0F};
-        float sum {0.0F};
-        float k {0.0F};
-        common::Volts alpha_out {0.0F};
-        common::Volts beta_out {0.0F};
-
-        if (!std::isfinite(voltage_in.alpha_volt_) || !std::isfinite(voltage_in.beta_volt_) || !std::isfinite(v_bus) || (v_bus <= 0.0F))
-        {
-            return common::ErrorCode::ErrorInvalidParam;
-        }
-        else if ((voltage_in.alpha_volt_ == 0.0F) && (voltage_in.beta_volt_ == 0.0F))
-        {
-            alphabeta_out.alpha_volt_ = alpha_out;
-            alphabeta_out.beta_volt_ = beta_out;
-            return common::ErrorCode::Ok;
-        }
-
-        auto ret1 = svpwm_detect_sector(voltage_in,sector);
-        auto ret2 = svpwm_to_one_sector(voltage_in,sector,rotated_voltage);
-
-        if ((ret1 != common::ErrorCode::Ok) || (ret2 != common::ErrorCode::Ok))
-        {
-            return common::ErrorCode::ErrorInvalidParam;
-        }
-
-        t1 = (3 * rotated_voltage.alpha_volt_ - SQRT3 * rotated_voltage.beta_volt_)/(2*v_bus);
-        t2 = (SQRT3 * rotated_voltage.beta_volt_)/v_bus;
-
-        if (std::isfinite(t1) && std::isfinite(t2))
-        {
-            sum = t1 + t2;
-            if (sum > 1.0F)
-            {
-                k = 1/sum;
-                alpha_out = k * voltage_in.alpha_volt_;
-                beta_out = k * voltage_in.beta_volt_;
-            }
-            else
-            {
-                alpha_out = voltage_in.alpha_volt_;
-                beta_out = voltage_in.beta_volt_;
-            }
-            alphabeta_out.alpha_volt_ = alpha_out;
-            alphabeta_out.beta_volt_ = beta_out;
-            return common::ErrorCode::Ok;
-        }
-        return common::ErrorCode::ErrorInvalidParam;
-    }
-
-/*  圆形限幅
-    [[nodiscard]] common::ErrorCode Svpwm::voltage_limit(
-        const common::AlphaBetaVoltage& alphabeta_in,
-        const common::Volts v_bus,
-        common::AlphaBetaVoltage& alphabeta_out
-    ) const noexcept
-    {
-        common::Volts alpha_in = alphabeta_in.alpha_volt_;
-        common::Volts beta_in = alphabeta_in.beta_volt_;
-        common::Volts use_max = std::sqrtf(alpha_in*alpha_in+beta_in*beta_in);
-        common::Volts v_max = v_bus/SQRT3;
-        common::Volts alpha_out {0.0F};
-        common::Volts beta_out {0.0F};
-        float scale = v_max/use_max;
-        if (std::isfinite(alpha_in)&&std::isfinite(beta_in)&&std::isfinite(v_max))
-        {
-            if (scale < 1)
-            {
-                alpha_out = scale * alpha_in;
-                beta_out = scale * beta_out;
-            }
-            else
-            {
-                alpha_out = scale * alpha_in;
-                beta_out = scale * beta_in;
-            }
-            if (std::isfinite(alpha_out)&&std::isfinite(beta_out))
-            {
-                alphabeta_out.alpha_volt_ = alpha_out;
-                alphabeta_out.beta_volt_ = beta_out;
-                return common::ErrorCode::Ok;
-            }
-        }
-        return common::ErrorCode::ErrorInvalidParam;
-    }
-*/
-
     [[nodiscard]] common::ErrorCode Svpwm::svpwm_calculate(
         const common::AlphaBetaVoltage& alphabeta_in,
         common::Volts v_bus,
@@ -357,7 +256,6 @@ namespace robot_foc::algorithm
     ) noexcept
     {
         const common::AlphaBetaVoltage& voltage_in = alphabeta_in;
-        common::AlphaBetaVoltage limit_voltage {};
         common::AlphaBetaVoltage voltage_out {};
         std::uint8_t sector = 0U;
         SvpwmTime time {};
@@ -367,22 +265,9 @@ namespace robot_foc::algorithm
         {
             return common::ErrorCode::ErrorInvalidParam;
         }
-        if ((voltage_in.alpha_volt_ != 0.0F) || (voltage_in.beta_volt_ != 0.0F))
-        {
-            auto ret1 = voltage_limit(voltage_in,v_bus,limit_voltage);
-            if(ret1 != common::ErrorCode::Ok) return ret1;
-            auto ret2 = svpwm_detect_sector(limit_voltage,sector);
-            if(ret2 != common::ErrorCode::Ok) return ret2;
-            auto ret3 = svpwm_to_one_sector(limit_voltage,sector,voltage_out);
-            if(ret3 != common::ErrorCode::Ok) return ret3;
-            auto ret4 = svpwm_calculate_time(voltage_out,v_bus,time);
-            if(ret4 != common::ErrorCode::Ok) return ret4;
-            auto ret5 = svpwm_calculate_duty(sector,time,duty);
-            if(ret5 != common::ErrorCode::Ok) return ret5;
-            duty_out = duty;
-            return common::ErrorCode::Ok;
-        }
-        else
+
+        // 零矢量直接输出50%占空比
+        if ((voltage_in.alpha_volt_ == 0.0F) && (voltage_in.beta_volt_ == 0.0F))
         {
             duty.a_duty_ = HALF;
             duty.b_duty_ = HALF;
@@ -390,5 +275,20 @@ namespace robot_foc::algorithm
             duty_out = duty;
             return common::ErrorCode::Ok;
         }
+
+        auto ret2 = svpwm_detect_sector(voltage_in,sector);
+        if(ret2 != common::ErrorCode::Ok) return ret2;
+
+        auto ret3 = svpwm_to_one_sector(voltage_in,sector,voltage_out);
+        if(ret3 != common::ErrorCode::Ok) return ret3;
+
+        auto ret4 = svpwm_calculate_time(voltage_out,v_bus,time);
+        if(ret4 != common::ErrorCode::Ok) return ret4;
+
+        auto ret5 = svpwm_calculate_duty(sector,time,duty);
+        if(ret5 != common::ErrorCode::Ok) return ret5;
+
+        duty_out = duty;
+        return common::ErrorCode::Ok;
     }
 } // namespace robot_foc::algorithm

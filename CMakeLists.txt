@@ -38,6 +38,7 @@ add_library(robot_hal_core STATIC
     Src/ALGORITHM/pid.cpp
     Src/ALGORITHM/encoder_speed.cpp
     Src/ALGORITHM/foc_transform.cpp
+    Src/ALGORITHM/voltage_limit.cpp
     Src/ALGORITHM/svpwm.cpp
 )
 
@@ -172,6 +173,8 @@ if(NOT CMAKE_CROSSCOMPILING)
         Test/Src/test_encoder_speed.cpp
         # FOC Clarke变换与逆变换、Park变换与逆变换单元测试
         Test/Src/test_foc_transform.cpp
+        # 电压限幅单元测试
+        Test/Src/test_voltage_limit.cpp
         # SVPWM单元测试
         Test/Src/test_svpwm.cpp
     )

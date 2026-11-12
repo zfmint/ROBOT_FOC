@@ -17,12 +17,13 @@ void test_sliding_average();
 void test_encoder_speed();
 void test_encoder_speed_closed();
 void test_foc_transform();
+void test_voltage_limit();
 void test_svpwm();
 
 int main()
 {
     std::cout << "\n========== Start Unit Test ==========\n\n";
-/*
+
     test_dummy_peripheral();
     test_mock_gpio();
     test_byte_ring_buffer();
@@ -36,8 +37,7 @@ int main()
     test_encoder_speed();
     test_encoder_speed_closed();
     test_foc_transform();
-
-*/
+    test_voltage_limit();
     test_svpwm();
 
     std::cout << "\n====================================\n";
