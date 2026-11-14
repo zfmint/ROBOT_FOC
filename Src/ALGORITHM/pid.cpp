@@ -11,8 +11,91 @@
  */
 #include "ALGORITHM/pid.hpp"
 
+#include <cmath>
+
+#include "control_type.hpp"
+
 namespace robot_foc::algorithm
 {
+    [[nodiscard]] common::ErrorCode PiController::configure(const PiConfig& config) noexcept
+    {
+        const PiConfig& cfg = config;
+        if ((std::isfinite(cfg.kp_)&&(cfg.kp_ >= 0.0F))
+          &&(std::isfinite(cfg.ki_)&&(cfg.ki_ >= 0.0F))
+          &&(std::isfinite(cfg.sample_time_)&&(cfg.sample_time_ > 0.0F))
+          &&(std::isfinite(cfg.integral_max_)&&(cfg.integral_max_ >= 0.0F))
+          &&(std::isfinite(cfg.integral_min_)&&(cfg.integral_min_ <= 0.0F))
+        )
+        {
+            const float ki_time = cfg.ki_ * cfg.sample_time_;
+            if (std::isfinite(ki_time))
+            {
+                piconfig_ = cfg;
+                integral_output_ = 0.0F;
+                configured_ = true;
+                ki_step_ = ki_time;
+                return common::ErrorCode::Ok;
+            }    
+        }
+        return common::ErrorCode::ErrorInvalidParam;
+    }
+
+    void PiController::reset() noexcept
+    {
+        integral_output_ = 0.0F;
+    }
+
+    [[nodiscard]] common::ErrorCode PiController::preview(
+        const common::Amperes setpoint,
+        const common::Amperes feedback,
+        PiPreview& preview_out
+    ) const noexcept
+    {
+        common::Volts voltage{0.0F};
+        PiPreview out;
+        float p{0.0F};
+        float error{0.0F};
+        if (!configured_)
+        {
+            return common::ErrorCode::ErrorInvalidParam;
+        }
+        if (std::isfinite(setpoint)&&std::isfinite(feedback))
+        {
+            error = setpoint - feedback;
+            p = piconfig_.kp_ * error;
+            voltage = p + integral_output_;
+            if (std::isfinite(error)&&std::isfinite(voltage))
+            {
+                out.error_ = error;
+                out.request_output_ = voltage;
+                preview_out = out;
+                return common::ErrorCode::Ok;
+            }
+        }
+        return common::ErrorCode::ErrorInvalidParam;
+    }
+
+    [[nodiscard]] common::ErrorCode PiController::prepare_update(
+        const PiPreview& preview,
+        common::Volts limited_output,
+        PiNextState& next_state_out
+    ) const noexcept
+    {
+        common::Volts out;
+        
+    }
+
+    /**
+     * @brief 确认当前PI状态
+     */
+    void commit(
+        const PiNextState& next_state
+    ) noexcept;
+
+
+
+
+    
     PositionalPid::PositionalPid(float kp, float ki, float kd, float out_min,
         float out_max, float integral_min, float integral_max) noexcept
         : kp_{kp},

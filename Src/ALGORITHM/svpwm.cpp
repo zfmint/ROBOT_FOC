@@ -276,17 +276,17 @@ namespace robot_foc::algorithm
             return common::ErrorCode::Ok;
         }
 
-        auto ret2 = svpwm_detect_sector(voltage_in,sector);
+        auto ret1 = svpwm_detect_sector(voltage_in,sector);
+        if(ret1 != common::ErrorCode::Ok) return ret1;
+
+        auto ret2 = svpwm_to_one_sector(voltage_in,sector,voltage_out);
         if(ret2 != common::ErrorCode::Ok) return ret2;
 
-        auto ret3 = svpwm_to_one_sector(voltage_in,sector,voltage_out);
+        auto ret3 = svpwm_calculate_time(voltage_out,v_bus,time);
         if(ret3 != common::ErrorCode::Ok) return ret3;
 
-        auto ret4 = svpwm_calculate_time(voltage_out,v_bus,time);
+        auto ret4 = svpwm_calculate_duty(sector,time,duty);
         if(ret4 != common::ErrorCode::Ok) return ret4;
-
-        auto ret5 = svpwm_calculate_duty(sector,time,duty);
-        if(ret5 != common::ErrorCode::Ok) return ret5;
 
         duty_out = duty;
         return common::ErrorCode::Ok;

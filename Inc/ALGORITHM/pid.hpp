@@ -1,14 +1,18 @@
 /**
  * @file pid.hpp
- * @brief Pid算法定义。提供两种Pid算法：位置式Pid、增量式Pid
+ * @brief Pid算法定义。提供三种Pid算法：电流环Pi、位置式Pid、增量式Pid
  * @details
  *  用途： 通用PID控制算法，用于闭环控制
  *  特性：
- *      1. 位置式PID PositionalPid
+ *      1. 电流环PI PiController
+ *          - 输入：设定值setpoint，反馈值feedback
+ *          - 参数：kp，ki
+ *          - 功能：完整积分项，支持积分限幅，reset()清零积分与历史误差状态
+ *      2. 位置式PID PositionalPid
  *          - 输入：设定值setpoint，反馈值feedback
  *          - 参数：kp，ki，kd
  *          - 功能：完整积分项，支持积分限幅、输出限幅，reset()清零积分与历史误差状态
- *      2. 增量式PID IncrementalPid
+ *      3. 增量式PID IncrementalPid
  *          - 输入：设定值setpoint，反馈值feedback
  *          - 参数：kp，ki，kd
  *          - 功能：输出控制增量Δu，支持增量限幅，reset()清零连续3次历史误差
@@ -28,8 +32,129 @@
 #ifndef ROBOT_FOC_ALGORITHM_PID_HPP
 #define ROBOT_FOC_ALGORITHM_PID_HPP
 
+#include "units.hpp"
+#include "error_code.hpp"
+#include "control_type.hpp"
+
 namespace robot_foc::algorithm
 {
+    /**
+     * @brief PI控制器基础配置
+     * @var kp_ 比例系数
+     * @var ki_ 积分系数
+     * @var sample_time_ 采样时间
+     * @var integral_min_ 积分下限
+     * @var integral_max_ 积分上限
+     */
+    struct PiConfig final
+    {
+        float kp_{0.0F};
+        float ki_{0.0F};
+        common::Seconds sample_time_{0.0F};
+        float integral_min_{0.0F};
+        float integral_max_{0.0F};
+    };
+    
+    /**
+     * @brief PI控制前计算内容
+     * @var error_ 控制误差
+     * @var request_output_ 尚未进行共同限幅的原始控制量
+     */
+    struct PiPreview
+    {
+        common::Amperes error_{0.0F};
+        common::Amperes request_output_{0.0F};
+    };
+    
+    /**
+     * @brief PI下周期内容
+     * @var integral_out_ 更新后的积分缓存
+     */
+    struct PiNextState
+    {
+        float integral_out_{0.0F};
+    };
+    
+    /**
+     * @brief PI控制器(适配电流环控制)
+     */
+    class PiController final
+    {
+    private:
+        // PI控制器基础配置
+        PiConfig piconfig_{};
+        // 积分运行状态,已经提交的积分输出贡献
+        float integral_output_{0.0F};
+        // 控制器配置完成标志位
+        bool configured_{false};
+        // 离散积分系数 Ki * Ts，单位 V/A
+        float ki_step_{0.0F};
+    public:
+        PiController() noexcept = default;
+        ~PiController() noexcept = default;
+
+        // 禁止拷贝、禁止移动，防止无意复制控制器状态
+        PiController(const PiController&) = delete;
+        PiController& operator=(const PiController&) = delete;
+        PiController(PiController&&) = delete;
+        PiController& operator=(PiController&&) = delete;
+        
+        /**
+         * @brief 预计算本周期PI原始控制输出（未限幅）
+         * @details 根据电流设定值与反馈值，计算误差、比例项、原始积分项，
+         * @param[in] setpoint DQ轴电流目标设定值
+         * @param[in] feedback DQ轴电流采样反馈值
+         * @param[out] preview_out PI预计算结果（原始未限幅电压、误差、比例项、原始积分项等）
+         * @retval ErrorCode::Ok 预计算正常完成
+         * @retval 其他错误码：输入参数非法
+         */
+        [[nodiscard]] common::ErrorCode preview(
+            const common::Amperes setpoint,
+            const common::Amperes feedback,
+            PiPreview& preview_out
+        ) const noexcept;
+
+        /**
+         * @brief 限幅后，准备PI下一周期状态（积分抗饱和回算）
+         * @details 传入预计算结果 + 经过电压限幅后的有效输出，通过抗饱和算法修正积分贡献；
+         *          输出待提交的下一状态，**不直接写入PI内部状态**，需调用commit生效。
+         * @param[in] preview 上一步preview得到的预计算数据包
+         * @param[in] limited_output 经过电压限幅模块约束后的有效αβ电压
+         * @param[out] next_state_out 修正后的PI下一状态（积分值等）
+         * @retval ErrorCode::Ok 状态准备完成
+         * @retval 其他错误码：参数非法
+         */
+        [[nodiscard]] common::ErrorCode prepare_update(
+            const PiPreview& preview,
+            common::Volts limited_output,
+            PiNextState& next_state_out
+        ) const noexcept;
+
+        /**
+         * @brief 提交并固化PI下一周期状态
+         * @details 将prepare_update算出的新状态写入PI内部，完成一次闭环步进；
+         * @param[in] next_state 由prepare_update输出的待生效状态
+         */
+        void commit(
+            const PiNextState& next_state
+        ) noexcept;
+
+        /**
+         * @brief 设置PI参数并校验配置合法性
+         * @param[in] config PI配置参数（Kp、Ki、积分限幅等）
+         * @retval ErrorCode::Ok 参数合法，配置生效
+         * @retval 其他错误码：参数非法（增益<=0、限幅范围错误等）
+         */
+        [[nodiscard]] common::ErrorCode configure(const PiConfig& config) noexcept;
+        
+        /**
+         * @brief 重置PI运行时状态
+         * @details 清零积分缓存、误差历史等动态状态；
+         * @note 保留原有configure的增益配置不变
+         */
+        void reset() noexcept;
+    };
+    
     /**
      * @brief 位置式Pid控制器
      */
@@ -147,7 +272,8 @@ namespace robot_foc::algorithm
          * @param delta_out_max 输出增量上限
          */
         IncrementalPid(float kp ,float ki, float kd,
-            float delta_out_min, float delta_out_max) noexcept;
+            float delta_out_min, float delta_out_max
+        ) noexcept;
         ~IncrementalPid() noexcept = default;
 
         // 禁止拷贝、禁止移动，防止无意复制控制器状态

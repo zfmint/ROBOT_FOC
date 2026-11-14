@@ -8,32 +8,29 @@
  * @note
  *  1. 电流环运行频率一般与PWM载波频率保持一致
  *  2. Id为励磁电流环、Iq为转矩电流环，两组调节器参数独立配置
- *  3. 输出限幅仅为本环调节器输出保护，最终矢量限幅由Svpwm模块六边形限幅完成
+ *  3. 本环调节器输出仅做内部保护限幅；最终αβ电压矢量限幅由 VoltageLimiter 模块完成
+ *  4. 使用位置式PID
+ *  5. 本类为最终实现类，禁止继承
  */
 #ifndef ROBOT_FOC_ALGORITHM_CURRENT_LOOP_HPP
 #define ROBOT_FOC_ALGORITHM_CURRENT_LOOP_HPP
 
+#include "units.hpp"
 #include "error_code.hpp"
 #include "control_type.hpp"
+#include "ALGORITHM/pid.hpp"
+#include "ALGORITHM/foc_transform.hpp"
 
 namespace robot_foc::algorithm
 {
-
     class CurrentLoop final
     {
     private:
-        
+        PositionalPid id_cfg;
+        PositionalPid iq_cfg;
     public:
-        //禁止实例化
-        CurrentLoop() = delete;
-        ~CurrentLoop() = delete;
-        CurrentLoop(const CurrentLoop&) = delete;
-        CurrentLoop& operator=(const CurrentLoop&) = delete;
-        CurrentLoop(CurrentLoop&&) = delete;
-        CurrentLoop& operator=(CurrentLoop&&) = delete;
-
         [[nodiscard]] common::ErrorCode calculate(
-            const common::DQCurrent& dq_input,
+            const common::DQCurrent& dq_ref,
             const common::DQCurrent& dq_feedback,
             common::DQVoltage& dq_out
         ) noexcept;
