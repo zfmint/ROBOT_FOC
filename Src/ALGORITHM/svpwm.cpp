@@ -52,7 +52,7 @@ namespace
     constexpr float HALF {0.5F};
     constexpr float SQRT3 {1.73205080757F};
     constexpr float SQRT3_HALF {0.8660254F};
-    constexpr float Tolerance{1.0e-4F};
+    constexpr float Tolerance {1.0e-4F};
     constexpr float cos_table [] = {
         1.000000F,
         0.500000F,
@@ -89,8 +89,8 @@ namespace robot_foc::algorithm
         std::uint8_t& sector_out
     ) noexcept
     {
-        common::Volts alpha_in = alphabeta_in.alpha_volt_;
-        common::Volts beta_in = alphabeta_in.beta_volt_;
+        common::Volts alpha_in = alphabeta_in.alpha_volt;
+        common::Volts beta_in = alphabeta_in.beta_volt;
         std::uint8_t sector {0};
         float x = beta_in;
         float y = SQRT3*alpha_in - beta_in;
@@ -133,8 +133,8 @@ namespace robot_foc::algorithm
         common::AlphaBetaVoltage& alphabeta_out
     ) noexcept
     {
-        common::Volts alpha_in = alphabeta_in.alpha_volt_;
-        common::Volts beta_in = alphabeta_in.beta_volt_;
+        common::Volts alpha_in = alphabeta_in.alpha_volt;
+        common::Volts beta_in = alphabeta_in.beta_volt;
         common::Volts alpha_out {0.0F};
         common::Volts beta_out {0.0F};
         std::uint8_t sector = sector_in - 1;
@@ -146,8 +146,8 @@ namespace robot_foc::algorithm
         beta_out = alpha_in*sin_table[sector]+beta_in*cos_table[sector];
         if (std::isfinite(alpha_out) && std::isfinite(beta_out))
         {
-            alphabeta_out.alpha_volt_ = alpha_out;
-            alphabeta_out.beta_volt_ = beta_out;
+            alphabeta_out.alpha_volt = alpha_out;
+            alphabeta_out.beta_volt = beta_out;
             return common::ErrorCode::Ok;
         }
         return common::ErrorCode::ErrorInvalidParam;
@@ -159,8 +159,8 @@ namespace robot_foc::algorithm
         SvpwmTime& time_out
     ) noexcept
     {
-        common::Volts alpha_in = alphabeta_in.alpha_volt_;
-        common::Volts beta_in = alphabeta_in.beta_volt_;
+        common::Volts alpha_in = alphabeta_in.alpha_volt;
+        common::Volts beta_in = alphabeta_in.beta_volt;
         common::Volts vtotal = v_bus;
         float t1 {0.0F};
         float t2 {0.0F};
@@ -182,9 +182,9 @@ namespace robot_foc::algorithm
             }
             if (std::isfinite(t0)&&std::isfinite(t1)&&std::isfinite(t2))
             {
-                time_out.t1_ratio_ = t1;
-                time_out.t2_ratio_ = t2;
-                time_out.t0_ratio_ = t0;
+                time_out.t1_ratio = t1;
+                time_out.t2_ratio = t2;
+                time_out.t0_ratio = t0;
                 return common::ErrorCode::Ok;
             }
         }
@@ -198,9 +198,9 @@ namespace robot_foc::algorithm
     ) noexcept
     {
         std::uint8_t sector = sector_in;
-        float t1 = time_in.t1_ratio_;
-        float t2 = time_in.t2_ratio_;
-        float t0 = HALF*time_in.t0_ratio_;
+        float t1 = time_in.t1_ratio;
+        float t2 = time_in.t2_ratio;
+        float t0 = HALF*time_in.t0_ratio;
         float a_out {0.0F};
         float b_out {0.0F};
         float c_out {0.0F};
@@ -241,9 +241,9 @@ namespace robot_foc::algorithm
         }
         if (std::isfinite(a_out)&&std::isfinite(b_out)&&std::isfinite(c_out))
         {
-            duty_out.a_duty_ = a_out;
-            duty_out.b_duty_ = b_out;
-            duty_out.c_duty_ = c_out;
+            duty_out.a_duty = a_out;
+            duty_out.b_duty = b_out;
+            duty_out.c_duty = c_out;
             return common::ErrorCode::Ok;
         }
         return common::ErrorCode::ErrorInvalidParam;
@@ -257,21 +257,21 @@ namespace robot_foc::algorithm
     {
         const common::AlphaBetaVoltage& voltage_in = alphabeta_in;
         common::AlphaBetaVoltage voltage_out {};
-        std::uint8_t sector = 0U;
+        std::uint8_t sector {0U};
         SvpwmTime time {};
         SvpwmDuty duty {};
 
-        if (!std::isfinite(voltage_in.alpha_volt_) || !std::isfinite(voltage_in.beta_volt_) || !std::isfinite(v_bus) || (v_bus <= 0.0F))
+        if (!std::isfinite(voltage_in.alpha_volt) || !std::isfinite(voltage_in.beta_volt) || !std::isfinite(v_bus) || (v_bus <= 0.0F))
         {
             return common::ErrorCode::ErrorInvalidParam;
         }
 
         // 零矢量直接输出50%占空比
-        if ((voltage_in.alpha_volt_ == 0.0F) && (voltage_in.beta_volt_ == 0.0F))
+        if ((voltage_in.alpha_volt == 0.0F) && (voltage_in.beta_volt == 0.0F))
         {
-            duty.a_duty_ = HALF;
-            duty.b_duty_ = HALF;
-            duty.c_duty_ = HALF;
+            duty.a_duty = HALF;
+            duty.b_duty = HALF;
+            duty.c_duty = HALF;
             duty_out = duty;
             return common::ErrorCode::Ok;
         }

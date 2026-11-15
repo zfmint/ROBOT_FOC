@@ -34,13 +34,13 @@ namespace robot_foc::hal
 
     private:
         /// @brief 底层存储数组
-        std::uint8_t buf_[Capacity]{};
+        std::uint8_t buf_[Capacity] {};
         /// @brief 下一次写入的位置下标
-        std::size_t write_idx_{};
+        std::size_t write_idx_ {};
         /// @brief 下一次读取的位置下标
-        std::size_t read_idx_{};
+        std::size_t read_idx_ {};
         /// @brief 当前缓冲区有效字节数
-        std::size_t count_{0U};
+        std::size_t count_ {0U};
 
     public:
         ByteRingBuffer() noexcept = default;

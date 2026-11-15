@@ -64,9 +64,9 @@ namespace robot_foc::hal
     /// @brief GPIO配置参数
     struct GpioConfig
     {
-        GpioMode    mode{GpioMode::Input};
-        GpioPull    pull{GpioPull::NoPull};
-        GpioLevel   init_level{GpioLevel::Low};
+        GpioMode    mode {GpioMode::Input};
+        GpioPull    pull {GpioPull::NoPull};
+        GpioLevel   init_level {GpioLevel::Low};
     };
 
     /**

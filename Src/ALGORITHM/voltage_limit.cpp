@@ -8,130 +8,97 @@
 #include "ALGORITHM/voltage_limit.hpp"
 
 #include <cmath>
-#include <cstdint>
 
 namespace
 {
     constexpr float SQRT3 {1.73205080757F};
+    constexpr float SQRT3_HALF {0.8660254F};
+    constexpr float HALF {0.5F};
 }
 
 namespace robot_foc::algorithm
 {
-
     [[nodiscard]] common::ErrorCode VoltageLimit::hexagon_limit(
         const common::AlphaBetaVoltage& alphabeta_in,
         const common::Volts v_bus,
-        common::AlphaBetaVoltage& alphabeta_out
+        VoltageLimitOut& result_out
     ) noexcept
     {
         const common::AlphaBetaVoltage& voltage_in = alphabeta_in;
-        common::Volts alpha_out{0.0F};
-        common::Volts beta_out{0.0F};
-
-        // 优先校验合法性，零矢量也必须校验Vbus
-        if (!std::isfinite(voltage_in.alpha_volt_)
-            || !std::isfinite(voltage_in.beta_volt_)
-            || !std::isfinite(v_bus)
-            || (v_bus <= 0.0F))
+        const common::Volts& bus = v_bus;
+        VoltageLimitOut result {};
+        float v_max {0.0F};
+        float max_projection {0.0F}, projection_1 {0.0F}, projection_2 {0.0F}, projection_3 {0.0F};
+        float scale {1.0F};
+        if ((!std::isfinite(voltage_in.alpha_volt))
+          ||(!std::isfinite(voltage_in.beta_volt))
+          ||(!std::isfinite(bus)
+          ||(bus <= 0.0F)  
+        )
+        )
         {
             return common::ErrorCode::ErrorInvalidParam;
         }
-
-        // 零矢量直接返回
-        if ((voltage_in.alpha_volt_ == 0.0F) && (voltage_in.beta_volt_ == 0.0F))
+        v_max = bus / SQRT3;
+        projection_1 = std::abs(SQRT3_HALF*voltage_in.alpha_volt + HALF*voltage_in.beta_volt);
+        projection_2 = std::abs(voltage_in.beta_volt);
+        projection_3 = std::abs(-SQRT3_HALF*voltage_in.alpha_volt + HALF*voltage_in.beta_volt);
+        max_projection = std::fmaxf(std::fmaxf(projection_1,projection_2),projection_3);
+        if (max_projection > v_max)
         {
-            alphabeta_out.alpha_volt_ = alpha_out;
-            alphabeta_out.beta_volt_ = beta_out;
+            scale = v_max / max_projection;
+            result.is_limited = true;
+        }
+        result.alphabeta_out.alpha_volt = scale*voltage_in.alpha_volt;
+        result.alphabeta_out.beta_volt = scale*voltage_in.beta_volt;
+        if (std::isfinite(result.alphabeta_out.alpha_volt) && std::isfinite(result.alphabeta_out.beta_volt))
+        {
+            result_out = result;
             return common::ErrorCode::Ok;
         }
-
-        // 限幅模块独立完成扇区识别，不依赖Svpwm的私有实现。
-        std::uint8_t sector{0U};
-        const float alpha_f = static_cast<float>(voltage_in.alpha_volt_);
-        const float beta_f  = static_cast<float>(voltage_in.beta_volt_);
-        const float vbus_f = static_cast<float>(v_bus);
-
-        const float x = beta_f;
-        const float y = SQRT3 * alpha_f - beta_f;
-        const float z = -SQRT3 * alpha_f - beta_f;
-        if ((x >= 0)&&(y > 0)&&(z < 0))          sector = 1U;
-        else if ((x > 0)&&(y <= 0)&&(z < 0))    sector = 2U;
-        else if ((x > 0)&&(y < 0)&&(z >= 0))    sector = 3U;
-        else if ((x <= 0)&&(y < 0)&&(z > 0))    sector = 4U;
-        else if ((x < 0)&&(y >= 0)&&(z > 0))    sector = 5U;
-        else if ((x < 0)&&(y > 0)&&(z <= 0))    sector = 6U;
-        else
-        {
-            return common::ErrorCode::ErrorInvalidParam;
-        }
-
-        // 扇区旋转折叠到sector1
-        constexpr float kCosTable[] = {1.0F, 0.5F, -0.5F, -1.0F, -0.5F, 0.5F};
-        constexpr float kSinTable[] = {0.0F, -0.8660254F, -0.8660254F, 0.0F, 0.8660254F, 0.8660254F};
-        const std::uint8_t idx = sector - 1U;
-        const float alpha_rot = alpha_f * kCosTable[idx] - beta_f * kSinTable[idx];
-        const float beta_rot  = alpha_f * kSinTable[idx] + beta_f * kCosTable[idx];
-
-        const float t1 = (3.0F * alpha_rot - SQRT3 * beta_rot) / (2.0F * vbus_f);
-        const float t2 = (SQRT3 * beta_rot) / vbus_f;
-        if(!std::isfinite(t1) || !std::isfinite(t2))
-        {
-            return common::ErrorCode::ErrorInvalidParam;
-        }
-
-        const float sum = t1 + t2;
-        float k = 1.0F;
-        if(sum > 1.0F)
-        {
-            k = 1.0F / sum;
-        }
-        alpha_out = static_cast<common::Volts>(k * alpha_f);
-        beta_out  = static_cast<common::Volts>(k * beta_f);
-
-        alphabeta_out.alpha_volt_ = alpha_out;
-        alphabeta_out.beta_volt_  = beta_out;
-        return common::ErrorCode::Ok;
+        return common::ErrorCode::ErrorInvalidParam;
     }
 
     [[nodiscard]] common::ErrorCode VoltageLimit::circle_limit(
         const common::AlphaBetaVoltage& alphabeta_in,
         const common::Volts v_bus,
-        common::AlphaBetaVoltage& alphabeta_out
+        VoltageLimitOut& result_out
     ) noexcept
     {
         const common::AlphaBetaVoltage& voltage_in = alphabeta_in;
-        if (!std::isfinite(voltage_in.alpha_volt_)
-            || !std::isfinite(voltage_in.beta_volt_)
-            || !std::isfinite(v_bus)
-            || (v_bus <= 0.0F))
+        const common::Volts& bus = v_bus;
+        VoltageLimitOut result {};
+        float v_max {0.0F};
+        float k {1.0F};
+        float amp {0.0F};
+        if ((!std::isfinite(voltage_in.alpha_volt))
+          ||(!std::isfinite(voltage_in.beta_volt))
+          ||(!std::isfinite(bus)
+          ||(bus <= 0.0F)  
+        )
+        )
         {
             return common::ErrorCode::ErrorInvalidParam;
         }
-
-        const float alpha_f = static_cast<float>(voltage_in.alpha_volt_);
-        const float beta_f  = static_cast<float>(voltage_in.beta_volt_);
-        const float vbus_f = static_cast<float>(v_bus);
-        const float v_max = vbus_f / SQRT3;
-
-        // hypot避免直接平方相加造成不必要的中间结果溢出。
-        const float amp = std::hypot(alpha_f, beta_f);
-        if (!std::isfinite(amp))
+        v_max = bus / SQRT3;
+        amp = std::hypot(voltage_in.alpha_volt, voltage_in.beta_volt);
+        if (!std::isfinite(amp)||!std::isfinite(v_max) || (v_max <= 0.0F))
         {
             return common::ErrorCode::ErrorInvalidParam;
         }
         float scale = 1.0F;
-        if(amp > 1e-9F)
+        if(amp > v_max)
         {
             scale = v_max / amp;
+            result.is_limited = true;
         }
-        if(scale > 1.0F)
+        result.alphabeta_out.alpha_volt = scale * voltage_in.alpha_volt;
+        result.alphabeta_out.beta_volt  = scale * voltage_in.beta_volt;
+        if (std::isfinite(result.alphabeta_out.alpha_volt) && std::isfinite(result.alphabeta_out.beta_volt))
         {
-            scale = 1.0F;
+            result_out = result;
+            return common::ErrorCode::Ok;
         }
-
-        alphabeta_out.alpha_volt_ = static_cast<common::Volts>(scale * alpha_f);
-        alphabeta_out.beta_volt_  = static_cast<common::Volts>(scale * beta_f);
-        return common::ErrorCode::Ok;
+        return common::ErrorCode::ErrorInvalidParam;
     }
-
 } // namespace robot_foc::algorithm

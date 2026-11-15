@@ -163,11 +163,11 @@ namespace
 
 namespace robot_foc::algorithm
 {
-    [[nodiscard]] common::ErrorCode FocTransform::clarke(const common::ABCCurrent& abc_current_in, common::AlphaBetaCurrent& ab_current_out) noexcept
+    [[nodiscard]] common::ErrorCode FocTransform::clarke(const common::ABCCurrent& abc_currentin, common::AlphaBetaCurrent& ab_currentout) noexcept
     {
-        common::Amperes a_curr = abc_current_in.a_current_;
-        common::Amperes b_curr = abc_current_in.b_current_;
-        common::Amperes c_curr = abc_current_in.c_current_;
+        common::Amperes a_curr = abc_currentin.a_current;
+        common::Amperes b_curr = abc_currentin.b_current;
+        common::Amperes c_curr = abc_currentin.c_current;
         common::Amperes alpha_curr_out {0.0F};
         common::Amperes beta_curr_out {0.0F};
         if (std::isfinite(a_curr)&&std::isfinite(b_curr)&&std::isfinite(c_curr))
@@ -175,18 +175,18 @@ namespace robot_foc::algorithm
             clarke_calculate_three(a_curr,b_curr,c_curr,alpha_curr_out,beta_curr_out);
             if (std::isfinite(alpha_curr_out)&&std::isfinite(beta_curr_out))
             {
-                ab_current_out.alpha_current_ = alpha_curr_out;
-                ab_current_out.beta_current_ = beta_curr_out;
+                ab_currentout.alpha_current = alpha_curr_out;
+                ab_currentout.beta_current = beta_curr_out;
                 return common::ErrorCode::Ok;
             }
         }
         return common::ErrorCode::ErrorInvalidParam;
     }
 
-    [[nodiscard]] common::ErrorCode FocTransform::clarke(const common::ABCurrent& ab_current_in, common::AlphaBetaCurrent& ab_current_out) noexcept
+    [[nodiscard]] common::ErrorCode FocTransform::clarke(const common::ABCurrent& ab_currentin, common::AlphaBetaCurrent& ab_currentout) noexcept
     {
-        common::Amperes a_curr = ab_current_in.a_current_;
-        common::Amperes b_curr = ab_current_in.b_current_;
+        common::Amperes a_curr = ab_currentin.a_current;
+        common::Amperes b_curr = ab_currentin.b_current;
         common::Amperes alpha_curr_out {0.0F};
         common::Amperes beta_curr_out {0.0F};
         if (std::isfinite(a_curr)&&std::isfinite(b_curr))
@@ -194,8 +194,8 @@ namespace robot_foc::algorithm
             clarke_calculate_two(a_curr,b_curr,alpha_curr_out,beta_curr_out);
             if (std::isfinite(alpha_curr_out)&&std::isfinite(beta_curr_out))
             {
-                ab_current_out.alpha_current_ = alpha_curr_out;
-                ab_current_out.beta_current_ = beta_curr_out;
+                ab_currentout.alpha_current = alpha_curr_out;
+                ab_currentout.beta_current = beta_curr_out;
                 return common::ErrorCode::Ok;
             }
         }
@@ -204,18 +204,18 @@ namespace robot_foc::algorithm
 
     [[nodiscard]] common::ErrorCode FocTransform::clarke(const common::ABCVoltage& abc_voltage_in, common::AlphaBetaVoltage& ab_voltage_out) noexcept
     {
-        common::Volts a_volt = abc_voltage_in.a_volt_;
-        common::Volts b_volt = abc_voltage_in.b_volt_;
-        common::Volts c_volt = abc_voltage_in.c_volt_;
-        common::Volts alpha_volt_out {0.0F};
-        common::Volts beta_volt_out {0.0F};
+        common::Volts a_volt = abc_voltage_in.a_volt;
+        common::Volts b_volt = abc_voltage_in.b_volt;
+        common::Volts c_volt = abc_voltage_in.c_volt;
+        common::Volts alpha_voltout {0.0F};
+        common::Volts beta_voltout {0.0F};
         if (std::isfinite(a_volt)&&std::isfinite(b_volt)&&std::isfinite(c_volt))
         {
-            clarke_calculate_three(a_volt,b_volt,c_volt,alpha_volt_out,beta_volt_out);
-            if (std::isfinite(alpha_volt_out)&&std::isfinite(beta_volt_out))
+            clarke_calculate_three(a_volt,b_volt,c_volt,alpha_voltout,beta_voltout);
+            if (std::isfinite(alpha_voltout)&&std::isfinite(beta_voltout))
             {
-                ab_voltage_out.alpha_volt_ = alpha_volt_out;
-                ab_voltage_out.beta_volt_ = beta_volt_out;
+                ab_voltage_out.alpha_volt = alpha_voltout;
+                ab_voltage_out.beta_volt = beta_voltout;
                 return common::ErrorCode::Ok;
             }
         }
@@ -224,27 +224,27 @@ namespace robot_foc::algorithm
     
     [[nodiscard]] common::ErrorCode FocTransform::clarke(const common::ABVoltage& ab_voltage_in, common::AlphaBetaVoltage& ab_voltage_out) noexcept
     {
-        common::Volts a_volt = ab_voltage_in.a_volt_;
-        common::Volts b_volt = ab_voltage_in.b_volt_;
-        common::Volts alpha_volt_out {0.0F};
-        common::Volts beta_volt_out {0.0F};
+        common::Volts a_volt = ab_voltage_in.a_volt;
+        common::Volts b_volt = ab_voltage_in.b_volt;
+        common::Volts alpha_voltout {0.0F};
+        common::Volts beta_voltout {0.0F};
         if (std::isfinite(a_volt)&&std::isfinite(b_volt))
         {
-            clarke_calculate_two(a_volt,b_volt,alpha_volt_out,beta_volt_out);
-            if (std::isfinite(alpha_volt_out)&&std::isfinite(beta_volt_out))
+            clarke_calculate_two(a_volt,b_volt,alpha_voltout,beta_voltout);
+            if (std::isfinite(alpha_voltout)&&std::isfinite(beta_voltout))
             {
-                ab_voltage_out.alpha_volt_ = alpha_volt_out;
-                ab_voltage_out.beta_volt_ = beta_volt_out;
+                ab_voltage_out.alpha_volt = alpha_voltout;
+                ab_voltage_out.beta_volt = beta_voltout;
                 return common::ErrorCode::Ok;
             }
         }
         return common::ErrorCode::ErrorInvalidParam;
     }
 
-    [[nodiscard]] common::ErrorCode FocTransform::inverse_clarke(const common::AlphaBetaCurrent& alphabeta_current_in, common::ABCCurrent& abc_current_out) noexcept
+    [[nodiscard]] common::ErrorCode FocTransform::inverse_clarke(const common::AlphaBetaCurrent& alphabeta_currentin, common::ABCCurrent& abc_currentout) noexcept
     {
-        common::Amperes alpha_curr_in = alphabeta_current_in.alpha_current_;
-        common::Amperes beta_curr_in = alphabeta_current_in.beta_current_;
+        common::Amperes alpha_curr_in = alphabeta_currentin.alpha_current;
+        common::Amperes beta_curr_in = alphabeta_currentin.beta_current;
         common::Amperes a_curr_out {0.0F};
         common::Amperes b_curr_out {0.0F};
         common::Amperes c_curr_out {0.0F};
@@ -253,9 +253,9 @@ namespace robot_foc::algorithm
             inverse_clarke_calculate(alpha_curr_in,beta_curr_in,a_curr_out,b_curr_out,c_curr_out);
             if (std::isfinite(a_curr_out)&&std::isfinite(b_curr_out)&&std::isfinite(c_curr_out))
             {
-                abc_current_out.a_current_ = a_curr_out;
-                abc_current_out.b_current_ = b_curr_out;
-                abc_current_out.c_current_ = c_curr_out;
+                abc_currentout.a_current = a_curr_out;
+                abc_currentout.b_current = b_curr_out;
+                abc_currentout.c_current = c_curr_out;
                 return common::ErrorCode::Ok;
             }
         }
@@ -264,29 +264,29 @@ namespace robot_foc::algorithm
 
     [[nodiscard]] common::ErrorCode FocTransform::inverse_clarke(const common::AlphaBetaVoltage& alphabeta_voltage_in, common::ABCVoltage& abc_voltage_out) noexcept
     {
-        common::Volts alpha_volt_in = alphabeta_voltage_in.alpha_volt_;
-        common::Volts beta_volt_in = alphabeta_voltage_in.beta_volt_;
-        common::Volts a_volt_out {0.0F};
-        common::Volts b_volt_out {0.0F};
-        common::Volts c_volt_out {0.0F};
-        if (std::isfinite(alpha_volt_in)&&std::isfinite(beta_volt_in))
+        common::Volts alpha_voltin = alphabeta_voltage_in.alpha_volt;
+        common::Volts beta_voltin = alphabeta_voltage_in.beta_volt;
+        common::Volts a_voltout {0.0F};
+        common::Volts b_voltout {0.0F};
+        common::Volts c_voltout {0.0F};
+        if (std::isfinite(alpha_voltin)&&std::isfinite(beta_voltin))
         {
-            inverse_clarke_calculate(alpha_volt_in,beta_volt_in,a_volt_out,b_volt_out,c_volt_out);
-            if (std::isfinite(a_volt_out)&&std::isfinite(b_volt_out)&&std::isfinite(c_volt_out))
+            inverse_clarke_calculate(alpha_voltin,beta_voltin,a_voltout,b_voltout,c_voltout);
+            if (std::isfinite(a_voltout)&&std::isfinite(b_voltout)&&std::isfinite(c_voltout))
             {
-                abc_voltage_out.a_volt_ = a_volt_out;
-                abc_voltage_out.b_volt_ = b_volt_out;
-                abc_voltage_out.c_volt_ = c_volt_out;
+                abc_voltage_out.a_volt = a_voltout;
+                abc_voltage_out.b_volt = b_voltout;
+                abc_voltage_out.c_volt = c_voltout;
                 return common::ErrorCode::Ok;
             }
         }
         return common::ErrorCode::ErrorInvalidParam;
     }
 
-    [[nodiscard]] common::ErrorCode FocTransform::park(const common::AlphaBetaCurrent& alphabeta_current_in, const common::ElectricalRad theta_e, common::DQCurrent& dq_current_out) noexcept
+    [[nodiscard]] common::ErrorCode FocTransform::park(const common::AlphaBetaCurrent& alphabeta_currentin, const common::ElectricalRad theta_e, common::DQCurrent& dq_currentout) noexcept
     {
-        common::Amperes alpha_curr_in = alphabeta_current_in.alpha_current_;
-        common::Amperes beta_curr_in = alphabeta_current_in.beta_current_;
+        common::Amperes alpha_curr_in = alphabeta_currentin.alpha_current;
+        common::Amperes beta_curr_in = alphabeta_currentin.beta_current;
         common::ElectricalRad ang = theta_e;
         common::Amperes d_curr_out {0.0F};
         common::Amperes q_curr_out {0.0F};
@@ -295,8 +295,8 @@ namespace robot_foc::algorithm
             park_calculate(alpha_curr_in,beta_curr_in,ang,d_curr_out,q_curr_out);
             if (std::isfinite(d_curr_out)&&std::isfinite(q_curr_out))
             {
-                dq_current_out.d_current_ = d_curr_out;
-                dq_current_out.q_current_ = q_curr_out;
+                dq_currentout.d_current = d_curr_out;
+                dq_currentout.q_current = q_curr_out;
                 return common::ErrorCode::Ok;
             }
         }
@@ -305,28 +305,28 @@ namespace robot_foc::algorithm
 
     [[nodiscard]] common::ErrorCode FocTransform::park(const common::AlphaBetaVoltage& alphabeta_voltage_in, const common::ElectricalRad theta_e, common::DQVoltage& dq_voltage_out) noexcept
     {
-        common::Volts alpha_volt_in = alphabeta_voltage_in.alpha_volt_;
-        common::Volts beta_volt_in = alphabeta_voltage_in.beta_volt_;
+        common::Volts alpha_voltin = alphabeta_voltage_in.alpha_volt;
+        common::Volts beta_voltin = alphabeta_voltage_in.beta_volt;
         common::ElectricalRad ang = theta_e;
-        common::Volts d_volt_out {0.0F};
-        common::Volts q_volt_out {0.0F};
-        if (std::isfinite(alpha_volt_in)&&std::isfinite(beta_volt_in)&&std::isfinite(ang))
+        common::Volts d_voltout {0.0F};
+        common::Volts q_voltout {0.0F};
+        if (std::isfinite(alpha_voltin)&&std::isfinite(beta_voltin)&&std::isfinite(ang))
         {
-            park_calculate(alpha_volt_in,beta_volt_in,ang,d_volt_out,q_volt_out);
-            if (std::isfinite(d_volt_out)&&std::isfinite(q_volt_out))
+            park_calculate(alpha_voltin,beta_voltin,ang,d_voltout,q_voltout);
+            if (std::isfinite(d_voltout)&&std::isfinite(q_voltout))
             {
-                dq_voltage_out.d_volt_ = d_volt_out;
-                dq_voltage_out.q_volt_ = q_volt_out;
+                dq_voltage_out.d_volt = d_voltout;
+                dq_voltage_out.q_volt = q_voltout;
                 return common::ErrorCode::Ok;
             }
         }
         return common::ErrorCode::ErrorInvalidParam;
     }
 
-    [[nodiscard]] common::ErrorCode FocTransform::inverse_park(const common::DQCurrent& dq_current_in, const common::ElectricalRad theta_e, common::AlphaBetaCurrent& alphabeta_current_out) noexcept
+    [[nodiscard]] common::ErrorCode FocTransform::inverse_park(const common::DQCurrent& dq_currentin, const common::ElectricalRad theta_e, common::AlphaBetaCurrent& alphabeta_currentout) noexcept
     {
-        common::Amperes d_curr_in = dq_current_in.d_current_;
-        common::Amperes q_curr_in = dq_current_in.q_current_;
+        common::Amperes d_curr_in = dq_currentin.d_current;
+        common::Amperes q_curr_in = dq_currentin.q_current;
         common::ElectricalRad ang = theta_e;
         common::Amperes alpha_curr_out {0.0F};
         common::Amperes beta_curr_out {0.0F};
@@ -335,8 +335,8 @@ namespace robot_foc::algorithm
             inverse_park_calculate(d_curr_in,q_curr_in,ang,alpha_curr_out,beta_curr_out);
             if (std::isfinite(alpha_curr_out)&&std::isfinite(beta_curr_out))
             {
-                alphabeta_current_out.alpha_current_ = alpha_curr_out;
-                alphabeta_current_out.beta_current_ = beta_curr_out;
+                alphabeta_currentout.alpha_current = alpha_curr_out;
+                alphabeta_currentout.beta_current = beta_curr_out;
                 return common::ErrorCode::Ok;
             }
         }
@@ -345,18 +345,18 @@ namespace robot_foc::algorithm
 
     [[nodiscard]] common::ErrorCode FocTransform::inverse_park(const common::DQVoltage& dq_voltage_in, const common::ElectricalRad theta_e, common::AlphaBetaVoltage& alphabeta_voltage_out) noexcept
     {
-        common::Volts d_volt_in = dq_voltage_in.d_volt_;
-        common::Volts q_volt_in = dq_voltage_in.q_volt_;
+        common::Volts d_voltin = dq_voltage_in.d_volt;
+        common::Volts q_voltin = dq_voltage_in.q_volt;
         common::ElectricalRad ang = theta_e;
-        common::Volts alpha_volt_out {0.0F};
-        common::Volts beta_volt_out {0.0F};
-        if (std::isfinite(d_volt_in)&&std::isfinite(q_volt_in)&&std::isfinite(ang))
+        common::Volts alpha_voltout {0.0F};
+        common::Volts beta_voltout {0.0F};
+        if (std::isfinite(d_voltin)&&std::isfinite(q_voltin)&&std::isfinite(ang))
         {
-            inverse_park_calculate(d_volt_in,q_volt_in,ang,alpha_volt_out,beta_volt_out);
-            if (std::isfinite(alpha_volt_out)&&std::isfinite(beta_volt_out))
+            inverse_park_calculate(d_voltin,q_voltin,ang,alpha_voltout,beta_voltout);
+            if (std::isfinite(alpha_voltout)&&std::isfinite(beta_voltout))
             {
-                alphabeta_voltage_out.alpha_volt_ = alpha_volt_out;
-                alphabeta_voltage_out.beta_volt_ = beta_volt_out;
+                alphabeta_voltage_out.alpha_volt = alpha_voltout;
+                alphabeta_voltage_out.beta_volt = beta_voltout;
                 return common::ErrorCode::Ok;
             }
         }

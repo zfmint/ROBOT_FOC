@@ -74,7 +74,7 @@ namespace robot_foc::hal
         /// @brief UART接收环形缓冲区
         ByteRingBuffer<RxBufferCapacity> rx_buf_;
         /// @brief 是否发生缓冲区满丢包标志
-        bool rx_overflow_flag_{false};
+        bool rx_overflow_flag_ {false};
         /// @brief 累计丢弃字节个数
         std::size_t rx_overflow_count_{0U};
         /// @brief 配置存储

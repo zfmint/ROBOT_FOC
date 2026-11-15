@@ -40,30 +40,30 @@ namespace robot_foc::algorithm
 {
     /**
      * @brief PI控制器基础配置
-     * @var kp_ 比例系数
-     * @var ki_ 积分系数
-     * @var sample_time_ 采样时间
-     * @var integral_min_ 积分下限
-     * @var integral_max_ 积分上限
+     * @var kp 比例系数
+     * @var ki 积分系数
+     * @var sample_time 采样时间
+     * @var integral_min 积分下限
+     * @var integral_max 积分上限
      */
     struct PiConfig final
     {
-        float kp_{0.0F};
-        float ki_{0.0F};
-        common::Seconds sample_time_{0.0F};
-        float integral_min_{0.0F};
-        float integral_max_{0.0F};
+        float kp {0.0F};
+        float ki {0.0F};
+        common::Seconds sample_time {0.0F};
+        float integral_min {0.0F};
+        float integral_max {0.0F};
     };
     
     /**
      * @brief PI控制前计算内容
-     * @var error_ 控制误差
-     * @var request_output_ 尚未进行共同限幅的原始控制量
+     * @var error 控制误差
+     * @var request_output 尚未进行共同限幅的原始控制量
      */
     struct PiPreview
     {
-        common::Amperes error_{0.0F};
-        common::Amperes request_output_{0.0F};
+        common::Amperes error {0.0F};
+        common::Amperes request_output {0.0F};
     };
     
     /**
@@ -72,7 +72,7 @@ namespace robot_foc::algorithm
      */
     struct PiNextState
     {
-        float integral_out_{0.0F};
+        float integral_out {0.0F};
     };
     
     /**
@@ -119,14 +119,15 @@ namespace robot_foc::algorithm
          * @details 传入预计算结果 + 经过电压限幅后的有效输出，通过抗饱和算法修正积分贡献；
          *          输出待提交的下一状态，**不直接写入PI内部状态**，需调用commit生效。
          * @param[in] preview 上一步preview得到的预计算数据包
-         * @param[in] limited_output 经过电压限幅模块约束后的有效αβ电压
+         * @param[in] limited_output 经过电压限幅模块约束后的有效电压
          * @param[out] next_state_out 修正后的PI下一状态（积分值等）
          * @retval ErrorCode::Ok 状态准备完成
          * @retval 其他错误码：参数非法
          */
         [[nodiscard]] common::ErrorCode prepare_update(
             const PiPreview& preview,
-            common::Volts limited_output,
+            const common::Volts limited_output,
+            const bool limit_flag,
             PiNextState& next_state_out
         ) const noexcept;
 

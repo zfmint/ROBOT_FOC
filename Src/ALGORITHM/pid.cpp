@@ -20,14 +20,14 @@ namespace robot_foc::algorithm
     [[nodiscard]] common::ErrorCode PiController::configure(const PiConfig& config) noexcept
     {
         const PiConfig& cfg = config;
-        if ((std::isfinite(cfg.kp_)&&(cfg.kp_ >= 0.0F))
-          &&(std::isfinite(cfg.ki_)&&(cfg.ki_ >= 0.0F))
-          &&(std::isfinite(cfg.sample_time_)&&(cfg.sample_time_ > 0.0F))
-          &&(std::isfinite(cfg.integral_max_)&&(cfg.integral_max_ >= 0.0F))
-          &&(std::isfinite(cfg.integral_min_)&&(cfg.integral_min_ <= 0.0F))
+        if ((std::isfinite(cfg.kp)&&(cfg.kp >= 0.0F))
+          &&(std::isfinite(cfg.ki)&&(cfg.ki >= 0.0F))
+          &&(std::isfinite(cfg.sample_time)&&(cfg.sample_time > 0.0F))
+          &&(std::isfinite(cfg.integral_max)&&(cfg.integral_max >= 0.0F))
+          &&(std::isfinite(cfg.integral_min)&&(cfg.integral_min <= 0.0F))
         )
         {
-            const float ki_time = cfg.ki_ * cfg.sample_time_;
+            const float ki_time = cfg.ki * cfg.sample_time;
             if (std::isfinite(ki_time))
             {
                 piconfig_ = cfg;
@@ -51,10 +51,10 @@ namespace robot_foc::algorithm
         PiPreview& preview_out
     ) const noexcept
     {
-        common::Volts voltage{0.0F};
+        common::Volts voltage {0.0F};
         PiPreview out;
-        float p{0.0F};
-        float error{0.0F};
+        float p {0.0F};
+        float error {0.0F};
         if (!configured_)
         {
             return common::ErrorCode::ErrorInvalidParam;
@@ -62,12 +62,12 @@ namespace robot_foc::algorithm
         if (std::isfinite(setpoint)&&std::isfinite(feedback))
         {
             error = setpoint - feedback;
-            p = piconfig_.kp_ * error;
+            p = piconfig_.kp * error;
             voltage = p + integral_output_;
             if (std::isfinite(error)&&std::isfinite(voltage))
             {
-                out.error_ = error;
-                out.request_output_ = voltage;
+                out.error = error;
+                out.request_output = voltage;
                 preview_out = out;
                 return common::ErrorCode::Ok;
             }
@@ -77,12 +77,24 @@ namespace robot_foc::algorithm
 
     [[nodiscard]] common::ErrorCode PiController::prepare_update(
         const PiPreview& preview,
-        common::Volts limited_output,
+        const common::Volts limited_output,
+        const bool limit_flag,
         PiNextState& next_state_out
     ) const noexcept
     {
-        common::Volts out;
+        const PiPreview& predata = preview;
+        const common::Volts& limit_volt = limited_output;
+        const bool& flag = limit_flag;
+        PiNextState result {};
+        if (std::isfinite(predata.request_output))
+        {
+            /* code */
+        }
         
+
+
+
+        return common::ErrorCode::Ok;
     }
 
     /**
@@ -98,13 +110,13 @@ namespace robot_foc::algorithm
     
     PositionalPid::PositionalPid(float kp, float ki, float kd, float out_min,
         float out_max, float integral_min, float integral_max) noexcept
-        : kp_{kp},
-          ki_{ki},
-          kd_{kd},
-          out_min_{out_min},
-          out_max_{out_max},
-          integral_min_{integral_min},
-          integral_max_{integral_max}
+        : kp_ {kp},
+          ki_ {ki},
+          kd_ {kd},
+          out_min_ {out_min},
+          out_max_ {out_max},
+          integral_min_ {integral_min},
+          integral_max_ {integral_max}
     {
     }
 
@@ -200,11 +212,11 @@ namespace robot_foc::algorithm
 
     IncrementalPid::IncrementalPid(float kp, float ki, float kd,
         float delta_out_min, float delta_out_max) noexcept
-        : kp_{kp},
-          ki_{ki},
-          kd_{kd},
-          delta_out_min_{delta_out_min},
-          delta_out_max_{delta_out_max}
+        : kp_ {kp},
+          ki_ {ki},
+          kd_ {kd},
+          delta_out_min_ {delta_out_min},
+          delta_out_max_ {delta_out_max}
     {
     }
 

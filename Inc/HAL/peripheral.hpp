@@ -33,7 +33,7 @@ namespace robot_foc::hal
     {
     private:
         ///@brief 初始化完成标志
-        bool initialized_{false};
+        bool initialized_ {false};
 
     public:
         using ErrorCode = robot_foc::common::ErrorCode;
