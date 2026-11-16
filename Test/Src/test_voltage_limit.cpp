@@ -29,9 +29,9 @@ void test_voltage_limit()
 
         auto ret = VoltageLimit::hexagon_limit(in, vbus, out_res);
         ROBOT_FOC_TEST_EXPECT(ret == ErrorCode::Ok, "hexagon zero vector ok");
-        ROBOT_FOC_TEST_EXPECT(nearly_equal(static_cast<float>(out_res.alphabeta_out.alpha_volt), 0.0F), "hexagon zero alpha is 0");
-        ROBOT_FOC_TEST_EXPECT(nearly_equal(static_cast<float>(out_res.alphabeta_out.beta_volt), 0.0F), "hexagon zero beta is 0");
-        ROBOT_FOC_TEST_EXPECT(out_res.is_limited == false, "hexagon zero-vector no clamp");
+        ROBOT_FOC_TEST_EXPECT(nearly_equal(static_cast<float>(out_res.alphabeta_out_.alpha_volt_), 0.0F), "hexagon zero alpha is 0");
+        ROBOT_FOC_TEST_EXPECT(nearly_equal(static_cast<float>(out_res.alphabeta_out_.beta_volt_), 0.0F), "hexagon zero beta is 0");
+        ROBOT_FOC_TEST_EXPECT(out_res.is_limited_ == false, "hexagon zero-vector no clamp");
     }
 
     // 测试2：六边形限幅 - 零矢量 + 非法vbus(0、负数)，输出缓冲区不篡改
@@ -39,15 +39,15 @@ void test_voltage_limit()
         AlphaBetaVoltage in{};
         VoltageLimitOut out_res{};
         // 预先填充脏值
-        out_res.alphabeta_out.alpha_volt = Volts{88.0F};
-        out_res.alphabeta_out.beta_volt  = Volts{88.0F};
-        out_res.is_limited = true;
+        out_res.alphabeta_out_.alpha_volt_ = Volts{88.0F};
+        out_res.alphabeta_out_.beta_volt_  = Volts{88.0F};
+        out_res.is_limited_ = true;
 
         auto ret_v0 = VoltageLimit::hexagon_limit(in, Volts{0.0F}, out_res);
         ROBOT_FOC_TEST_EXPECT(ret_v0 == ErrorCode::ErrorInvalidParam, "hexagon zero vector vbus=0 invalid");
-        ROBOT_FOC_TEST_EXPECT(nearly_equal(static_cast<float>(out_res.alphabeta_out.alpha_volt), 88.0F), "hexagon fail preserve alpha");
-        ROBOT_FOC_TEST_EXPECT(nearly_equal(static_cast<float>(out_res.alphabeta_out.beta_volt), 88.0F), "hexagon fail preserve beta");
-        ROBOT_FOC_TEST_EXPECT(out_res.is_limited == true, "hexagon fail preserve is_limited flag");
+        ROBOT_FOC_TEST_EXPECT(nearly_equal(static_cast<float>(out_res.alphabeta_out_.alpha_volt_), 88.0F), "hexagon fail preserve alpha");
+        ROBOT_FOC_TEST_EXPECT(nearly_equal(static_cast<float>(out_res.alphabeta_out_.beta_volt_), 88.0F), "hexagon fail preserve beta");
+        ROBOT_FOC_TEST_EXPECT(out_res.is_limited_ == true, "hexagon fail preserve is_limited flag");
 
         auto ret_neg = VoltageLimit::hexagon_limit(in, Volts{-12.0F}, out_res);
         ROBOT_FOC_TEST_EXPECT(ret_neg == ErrorCode::ErrorInvalidParam, "hexagon zero vector vbus neg invalid");
@@ -60,13 +60,13 @@ void test_voltage_limit()
         const Volts vbus{24.0F};
         const float hex_max_alpha = (2.0F / 3.0F) * static_cast<float>(vbus);
 
-        in.alpha_volt = Volts{20.0F};
-        in.beta_volt  = Volts{0.0F};
+        in.alpha_volt_ = Volts{20.0F};
+        in.beta_volt_  = Volts{0.0F};
         auto ret = VoltageLimit::hexagon_limit(in, vbus, out_res);
         ROBOT_FOC_TEST_EXPECT(ret == ErrorCode::Ok, "hexagon alpha overmod ok");
-        ROBOT_FOC_TEST_EXPECT(nearly_equal(static_cast<float>(out_res.alphabeta_out.alpha_volt), hex_max_alpha), "hexagon alpha clamped");
-        ROBOT_FOC_TEST_EXPECT(nearly_equal(static_cast<float>(out_res.alphabeta_out.beta_volt), 0.0F), "hexagon beta remain zero");
-        ROBOT_FOC_TEST_EXPECT(out_res.is_limited == true, "hexagon alpha over set is_limited true");
+        ROBOT_FOC_TEST_EXPECT(nearly_equal(static_cast<float>(out_res.alphabeta_out_.alpha_volt_), hex_max_alpha), "hexagon alpha clamped");
+        ROBOT_FOC_TEST_EXPECT(nearly_equal(static_cast<float>(out_res.alphabeta_out_.beta_volt_), 0.0F), "hexagon beta remain zero");
+        ROBOT_FOC_TEST_EXPECT(out_res.is_limited_ == true, "hexagon alpha over set is_limited true");
     }
 
     // 测试3-1：六边形0°方向超限，径向缩放，角度保持不变
@@ -76,15 +76,15 @@ void test_voltage_limit()
         const Volts vbus{24.0F};
         const float angle_in_rad = 0.0F;
         const float amp_in = 20.0F;
-        in.alpha_volt = Volts{amp_in * std::cosf(angle_in_rad)};
-        in.beta_volt  = Volts{amp_in * std::sinf(angle_in_rad)};
+        in.alpha_volt_ = Volts{amp_in * std::cosf(angle_in_rad)};
+        in.beta_volt_  = Volts{amp_in * std::sinf(angle_in_rad)};
 
         auto ret = VoltageLimit::hexagon_limit(in, vbus, out_res);
         ROBOT_FOC_TEST_EXPECT(ret == ErrorCode::Ok, "hexagon vertex 0deg over-limit ok");
-        ROBOT_FOC_TEST_EXPECT(out_res.is_limited == true, "hexagon 0deg over-limit flag true");
+        ROBOT_FOC_TEST_EXPECT(out_res.is_limited_ == true, "hexagon 0deg over-limit flag true");
 
-        float a_out = static_cast<float>(out_res.alphabeta_out.alpha_volt);
-        float b_out = static_cast<float>(out_res.alphabeta_out.beta_volt);
+        float a_out = static_cast<float>(out_res.alphabeta_out_.alpha_volt_);
+        float b_out = static_cast<float>(out_res.alphabeta_out_.beta_volt_);
         float angle_out = std::atan2f(b_out, a_out);
         ROBOT_FOC_TEST_EXPECT(nearly_equal(angle_out, angle_in_rad), "hexagon vertex 0deg direction preserved");
     }
@@ -96,15 +96,15 @@ void test_voltage_limit()
         const Volts vbus{24.0F};
         const float edge_midpoint_angle_rad = 30.0F * 3.1415926F / 180.0F;
         const float amp_raw = 20.0F;
-        in.alpha_volt = Volts{amp_raw * std::cosf(edge_midpoint_angle_rad)};
-        in.beta_volt  = Volts{amp_raw * std::sinf(edge_midpoint_angle_rad)};
+        in.alpha_volt_ = Volts{amp_raw * std::cosf(edge_midpoint_angle_rad)};
+        in.beta_volt_  = Volts{amp_raw * std::sinf(edge_midpoint_angle_rad)};
 
         auto ret = VoltageLimit::hexagon_limit(in, vbus, out_res);
         ROBOT_FOC_TEST_EXPECT(ret == ErrorCode::Ok, "hexagon edge-midpoint 30deg over-limit ok");
-        ROBOT_FOC_TEST_EXPECT(out_res.is_limited == true, "hexagon 30deg over-limit flag true");
+        ROBOT_FOC_TEST_EXPECT(out_res.is_limited_ == true, "hexagon 30deg over-limit flag true");
 
-        float a_out = static_cast<float>(out_res.alphabeta_out.alpha_volt);
-        float b_out = static_cast<float>(out_res.alphabeta_out.beta_volt);
+        float a_out = static_cast<float>(out_res.alphabeta_out_.alpha_volt_);
+        float b_out = static_cast<float>(out_res.alphabeta_out_.beta_volt_);
         float angle_out = std::atan2f(b_out, a_out);
         ROBOT_FOC_TEST_EXPECT(nearly_equal(angle_out, edge_midpoint_angle_rad), "hexagon edge-midpoint keep input angle");
     }
@@ -116,15 +116,15 @@ void test_voltage_limit()
         const Volts vbus{24.0F};
         const float angle_in = 15.0F * 3.1415926F / 180.0F;
         const float amp_in = 20.0F;
-        in.alpha_volt = Volts{amp_in * std::cosf(angle_in)};
-        in.beta_volt  = Volts{amp_in * std::sinf(angle_in)};
+        in.alpha_volt_ = Volts{amp_in * std::cosf(angle_in)};
+        in.beta_volt_  = Volts{amp_in * std::sinf(angle_in)};
 
         auto ret = VoltageLimit::hexagon_limit(in, vbus, out_res);
         ROBOT_FOC_TEST_EXPECT(ret == ErrorCode::Ok, "hexagon 15deg over-limit ok");
-        ROBOT_FOC_TEST_EXPECT(out_res.is_limited == true, "hexagon 15deg over-limit flag true");
+        ROBOT_FOC_TEST_EXPECT(out_res.is_limited_ == true, "hexagon 15deg over-limit flag true");
 
-        float a_out = static_cast<float>(out_res.alphabeta_out.alpha_volt);
-        float b_out = static_cast<float>(out_res.alphabeta_out.beta_volt);
+        float a_out = static_cast<float>(out_res.alphabeta_out_.alpha_volt_);
+        float b_out = static_cast<float>(out_res.alphabeta_out_.beta_volt_);
         float angle_out = std::atan2f(b_out, a_out);
         float amp_out = std::hypot(a_out, b_out);
 
@@ -148,17 +148,17 @@ void test_voltage_limit()
         {
             AlphaBetaVoltage in{};
             VoltageLimitOut out_res{};
-            in.alpha_volt = Volts{point[0]};
-            in.beta_volt = Volts{point[1]};
+            in.alpha_volt_ = Volts{point[0]};
+            in.beta_volt_ = Volts{point[1]};
 
             const auto ret = VoltageLimit::hexagon_limit(in, vbus, out_res);
-            const float alpha_out = static_cast<float>(out_res.alphabeta_out.alpha_volt);
-            const float beta_out = static_cast<float>(out_res.alphabeta_out.beta_volt);
+            const float alpha_out = static_cast<float>(out_res.alphabeta_out_.alpha_volt_);
+            const float beta_out = static_cast<float>(out_res.alphabeta_out_.beta_volt_);
             const float cross = point[0] * beta_out - point[1] * alpha_out;
             const float dot = point[0] * alpha_out + point[1] * beta_out;
 
             ROBOT_FOC_TEST_EXPECT(ret == ErrorCode::Ok, "hexagon sector-center limit ok");
-            ROBOT_FOC_TEST_EXPECT(out_res.is_limited == true, "hexagon sector-center is_limited true");
+            ROBOT_FOC_TEST_EXPECT(out_res.is_limited_ == true, "hexagon sector-center is_limited true");
             ROBOT_FOC_TEST_EXPECT(nearly_equal(cross, 0.0F, 1.0e-3F) && (dot > 0.0F), "hexagon sector-center direction preserved");
         }
     }
@@ -168,32 +168,32 @@ void test_voltage_limit()
         AlphaBetaVoltage in{};
         VoltageLimitOut out_res{};
         const Volts vbus{24.0F};
-        in.alpha_volt = Volts{5.0F};
-        in.beta_volt  = Volts{2.0F};
+        in.alpha_volt_ = Volts{5.0F};
+        in.beta_volt_  = Volts{2.0F};
 
         auto ret = VoltageLimit::hexagon_limit(in, vbus, out_res);
         ROBOT_FOC_TEST_EXPECT(ret == ErrorCode::Ok, "hexagon linear region ok");
-        ROBOT_FOC_TEST_EXPECT(nearly_equal(static_cast<float>(out_res.alphabeta_out.alpha_volt), 5.0F), "hexagon linear alpha keep");
-        ROBOT_FOC_TEST_EXPECT(nearly_equal(static_cast<float>(out_res.alphabeta_out.beta_volt), 2.0F), "hexagon linear beta keep");
-        ROBOT_FOC_TEST_EXPECT(out_res.is_limited == false, "hexagon linear no clamp flag");
+        ROBOT_FOC_TEST_EXPECT(nearly_equal(static_cast<float>(out_res.alphabeta_out_.alpha_volt_), 5.0F), "hexagon linear alpha keep");
+        ROBOT_FOC_TEST_EXPECT(nearly_equal(static_cast<float>(out_res.alphabeta_out_.beta_volt_), 2.0F), "hexagon linear beta keep");
+        ROBOT_FOC_TEST_EXPECT(out_res.is_limited_ == false, "hexagon linear no clamp flag");
     }
 
     // 测试5：六边形限幅-NAN / INF非法输入，输出缓冲区不篡改
     {
         AlphaBetaVoltage in{};
         VoltageLimitOut out_res{};
-        out_res.alphabeta_out.alpha_volt = Volts{77.0F};
-        out_res.alphabeta_out.beta_volt  = Volts{77.0F};
-        out_res.is_limited = true;
+        out_res.alphabeta_out_.alpha_volt_ = Volts{77.0F};
+        out_res.alphabeta_out_.beta_volt_  = Volts{77.0F};
+        out_res.is_limited_ = true;
         const Volts vbus{24.0F};
 
-        in.alpha_volt = Volts{NAN};
+        in.alpha_volt_ = Volts{NAN};
         auto ret_nan = VoltageLimit::hexagon_limit(in, vbus, out_res);
         ROBOT_FOC_TEST_EXPECT(ret_nan == ErrorCode::ErrorInvalidParam, "hexagon NAN input invalid");
-        ROBOT_FOC_TEST_EXPECT(nearly_equal(static_cast<float>(out_res.alphabeta_out.alpha_volt),77.0F), "hexagon NAN preserve output");
-        ROBOT_FOC_TEST_EXPECT(out_res.is_limited == true, "hexagon NAN preserve flag");
+        ROBOT_FOC_TEST_EXPECT(nearly_equal(static_cast<float>(out_res.alphabeta_out_.alpha_volt_),77.0F), "hexagon NAN preserve output");
+        ROBOT_FOC_TEST_EXPECT(out_res.is_limited_ == true, "hexagon NAN preserve flag");
 
-        in.alpha_volt = Volts{INFINITY};
+        in.alpha_volt_ = Volts{INFINITY};
         auto ret_inf = VoltageLimit::hexagon_limit(in, vbus, out_res);
         ROBOT_FOC_TEST_EXPECT(ret_inf == ErrorCode::ErrorInvalidParam, "hexagon INF input invalid");
     }
@@ -207,9 +207,9 @@ void test_voltage_limit()
 
         auto ret = VoltageLimit::circle_limit(in, vbus, out_res);
         ROBOT_FOC_TEST_EXPECT(ret == ErrorCode::Ok, "circle zero vector ok");
-        ROBOT_FOC_TEST_EXPECT(nearly_equal(static_cast<float>(out_res.alphabeta_out.alpha_volt),0.0F), "circle zero alpha 0");
-        ROBOT_FOC_TEST_EXPECT(nearly_equal(static_cast<float>(out_res.alphabeta_out.beta_volt),0.0F), "circle zero beta 0");
-        ROBOT_FOC_TEST_EXPECT(out_res.is_limited == false, "circle zero-vector no clamp");
+        ROBOT_FOC_TEST_EXPECT(nearly_equal(static_cast<float>(out_res.alphabeta_out_.alpha_volt_),0.0F), "circle zero alpha 0");
+        ROBOT_FOC_TEST_EXPECT(nearly_equal(static_cast<float>(out_res.alphabeta_out_.beta_volt_),0.0F), "circle zero beta 0");
+        ROBOT_FOC_TEST_EXPECT(out_res.is_limited_ == false, "circle zero-vector no clamp");
     }
 
     // 测试7：圆形限幅-超限径向缩放，保持角度，is_limited=true
@@ -220,15 +220,15 @@ void test_voltage_limit()
         const float circle_max_amp = static_cast<float>(vbus) / SQRT3;
         const float angle_30_rad = 30.0F * 3.1415926F / 180.0F;
         const float raw_amp = 20.0F;
-        in.alpha_volt = Volts{raw_amp * std::cosf(angle_30_rad)};
-        in.beta_volt  = Volts{raw_amp * std::sinf(angle_30_rad)};
+        in.alpha_volt_ = Volts{raw_amp * std::cosf(angle_30_rad)};
+        in.beta_volt_  = Volts{raw_amp * std::sinf(angle_30_rad)};
 
         auto ret = VoltageLimit::circle_limit(in, vbus, out_res);
         ROBOT_FOC_TEST_EXPECT(ret == ErrorCode::Ok, "circle over-amplitude ok");
-        ROBOT_FOC_TEST_EXPECT(out_res.is_limited == true, "circle over-amplitude flag true");
+        ROBOT_FOC_TEST_EXPECT(out_res.is_limited_ == true, "circle over-amplitude flag true");
 
-        float out_a = static_cast<float>(out_res.alphabeta_out.alpha_volt);
-        float out_b = static_cast<float>(out_res.alphabeta_out.beta_volt);
+        float out_a = static_cast<float>(out_res.alphabeta_out_.alpha_volt_);
+        float out_b = static_cast<float>(out_res.alphabeta_out_.beta_volt_);
         float out_amp = std::hypot(out_a, out_b);
         float out_angle = std::atan2f(out_b, out_a);
 
@@ -240,30 +240,30 @@ void test_voltage_limit()
     {
         AlphaBetaVoltage in{};
         VoltageLimitOut out_res{};
-        out_res.alphabeta_out.alpha_volt = Volts{66.0F};
-        out_res.alphabeta_out.beta_volt  = Volts{66.0F};
-        out_res.is_limited = true;
+        out_res.alphabeta_out_.alpha_volt_ = Volts{66.0F};
+        out_res.alphabeta_out_.beta_volt_  = Volts{66.0F};
+        out_res.is_limited_ = true;
 
         auto ret = VoltageLimit::circle_limit(in, Volts{0.0F}, out_res);
         ROBOT_FOC_TEST_EXPECT(ret == ErrorCode::ErrorInvalidParam, "circle zero vbus=0 invalid");
-        ROBOT_FOC_TEST_EXPECT(nearly_equal(static_cast<float>(out_res.alphabeta_out.alpha_volt),66.0F), "circle fail preserve alpha");
-        ROBOT_FOC_TEST_EXPECT(out_res.is_limited == true, "circle fail preserve flag");
+        ROBOT_FOC_TEST_EXPECT(nearly_equal(static_cast<float>(out_res.alphabeta_out_.alpha_volt_),66.0F), "circle fail preserve alpha");
+        ROBOT_FOC_TEST_EXPECT(out_res.is_limited_ == true, "circle fail preserve flag");
     }
 
     // 测试9：圆形限幅-NAN输入，输出缓冲区保持脏值
     {
         AlphaBetaVoltage in{};
         VoltageLimitOut out_res{};
-        out_res.alphabeta_out.alpha_volt = Volts{55.0F};
-        out_res.alphabeta_out.beta_volt  = Volts{55.0F};
-        out_res.is_limited = true;
+        out_res.alphabeta_out_.alpha_volt_ = Volts{55.0F};
+        out_res.alphabeta_out_.beta_volt_  = Volts{55.0F};
+        out_res.is_limited_ = true;
         const Volts vbus{24.0F};
-        in.beta_volt = Volts{NAN};
+        in.beta_volt_ = Volts{NAN};
 
         auto ret = VoltageLimit::circle_limit(in, vbus, out_res);
         ROBOT_FOC_TEST_EXPECT(ret == ErrorCode::ErrorInvalidParam, "circle NAN input invalid");
-        ROBOT_FOC_TEST_EXPECT(nearly_equal(static_cast<float>(out_res.alphabeta_out.beta_volt),55.0F), "circle NAN preserve output");
-        ROBOT_FOC_TEST_EXPECT(out_res.is_limited == true, "circle NAN preserve flag");
+        ROBOT_FOC_TEST_EXPECT(nearly_equal(static_cast<float>(out_res.alphabeta_out_.beta_volt_),55.0F), "circle NAN preserve output");
+        ROBOT_FOC_TEST_EXPECT(out_res.is_limited_ == true, "circle NAN preserve flag");
     }
 
     // 测试10：圆形限幅-极大有限输入，方向不丢失
@@ -273,28 +273,54 @@ void test_voltage_limit()
         const Volts vbus{24.0F};
         const float large_finite = 1.0e20F;
         const float expected_component = static_cast<float>(vbus) / std::sqrt(6.0F);
-        in.alpha_volt = Volts{large_finite};
-        in.beta_volt = Volts{large_finite};
+        in.alpha_volt_ = Volts{large_finite};
+        in.beta_volt_ = Volts{large_finite};
 
         const auto ret = VoltageLimit::circle_limit(in, vbus, out_res);
         ROBOT_FOC_TEST_EXPECT(ret == ErrorCode::Ok, "circle large finite input ok");
-        ROBOT_FOC_TEST_EXPECT(out_res.is_limited == true, "circle large finite is_limited true");
-        ROBOT_FOC_TEST_EXPECT(nearly_equal(static_cast<float>(out_res.alphabeta_out.alpha_volt), expected_component, 1.0e-3F), "circle large finite alpha clamped");
-        ROBOT_FOC_TEST_EXPECT(nearly_equal(static_cast<float>(out_res.alphabeta_out.beta_volt), expected_component, 1.0e-3F), "circle large finite beta clamped");
+        ROBOT_FOC_TEST_EXPECT(out_res.is_limited_ == true, "circle large finite is_limited true");
+        ROBOT_FOC_TEST_EXPECT(nearly_equal(static_cast<float>(out_res.alphabeta_out_.alpha_volt_), expected_component, 1.0e-3F), "circle large finite alpha clamped");
+        ROBOT_FOC_TEST_EXPECT(nearly_equal(static_cast<float>(out_res.alphabeta_out_.beta_volt_), expected_component, 1.0e-3F), "circle large finite beta clamped");
     }
 
-    // 测试11：圆形限幅-矢量在线性区内，is_limited=false
+    // 测试11：六边形限幅-极大有限输入不发生投影溢出
     {
         AlphaBetaVoltage in{};
         VoltageLimitOut out_res{};
         const Volts vbus{24.0F};
-        in.alpha_volt = Volts{5.0F};
-        in.beta_volt  = Volts{2.0F};
+        const float large_finite = 1.0e38F;
+        in.alpha_volt_ = Volts{large_finite};
+        in.beta_volt_ = Volts{large_finite};
+
+        const auto ret = VoltageLimit::hexagon_limit(in, vbus, out_res);
+        ROBOT_FOC_TEST_EXPECT(ret == ErrorCode::Ok, "hexagon large finite input ok");
+        ROBOT_FOC_TEST_EXPECT(out_res.is_limited_ == true, "hexagon large finite is_limited true");
+        ROBOT_FOC_TEST_EXPECT(
+            std::isfinite(out_res.alphabeta_out_.alpha_volt_)
+            && std::isfinite(out_res.alphabeta_out_.beta_volt_),
+            "hexagon large finite output remains finite"
+        );
+        ROBOT_FOC_TEST_EXPECT(
+            nearly_equal(
+                out_res.alphabeta_out_.alpha_volt_,
+                out_res.alphabeta_out_.beta_volt_
+            ),
+            "hexagon large finite direction preserved"
+        );
+    }
+
+    // 测试12：圆形限幅-矢量在线性区内，is_limited=false
+    {
+        AlphaBetaVoltage in{};
+        VoltageLimitOut out_res{};
+        const Volts vbus{24.0F};
+        in.alpha_volt_ = Volts{5.0F};
+        in.beta_volt_  = Volts{2.0F};
 
         auto ret = VoltageLimit::circle_limit(in, vbus, out_res);
         ROBOT_FOC_TEST_EXPECT(ret == ErrorCode::Ok, "circle linear region ok");
-        ROBOT_FOC_TEST_EXPECT(nearly_equal(static_cast<float>(out_res.alphabeta_out.alpha_volt), 5.0F), "circle linear alpha keep");
-        ROBOT_FOC_TEST_EXPECT(nearly_equal(static_cast<float>(out_res.alphabeta_out.beta_volt), 2.0F), "circle linear beta keep");
-        ROBOT_FOC_TEST_EXPECT(out_res.is_limited == false, "circle linear no clamp flag");
+        ROBOT_FOC_TEST_EXPECT(nearly_equal(static_cast<float>(out_res.alphabeta_out_.alpha_volt_), 5.0F), "circle linear alpha keep");
+        ROBOT_FOC_TEST_EXPECT(nearly_equal(static_cast<float>(out_res.alphabeta_out_.beta_volt_), 2.0F), "circle linear beta keep");
+        ROBOT_FOC_TEST_EXPECT(out_res.is_limited_ == false, "circle linear no clamp flag");
     }
 }

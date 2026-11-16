@@ -36,8 +36,8 @@ MockGpio::MockGpio(hal::GpioPin pin) noexcept
 
     // 从基类读取配置，初始化仿真状态
     const auto& cfg = this->get_config();
-    mode_ = cfg.mode;
-    level_ = cfg.init_level;
+    mode_ = cfg.mode_;
+    level_ = cfg.init_level_;
 
     return ErrorCode::Ok;
 }

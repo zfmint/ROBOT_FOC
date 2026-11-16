@@ -20,14 +20,14 @@ namespace robot_foc::algorithm
     [[nodiscard]] common::ErrorCode PiController::configure(const PiConfig& config) noexcept
     {
         const PiConfig& cfg = config;
-        if ((std::isfinite(cfg.kp)&&(cfg.kp >= 0.0F))
-          &&(std::isfinite(cfg.ki)&&(cfg.ki >= 0.0F))
-          &&(std::isfinite(cfg.sample_time)&&(cfg.sample_time > 0.0F))
-          &&(std::isfinite(cfg.integral_max)&&(cfg.integral_max >= 0.0F))
-          &&(std::isfinite(cfg.integral_min)&&(cfg.integral_min <= 0.0F))
+        if ((std::isfinite(cfg.kp_)&&(cfg.kp_ >= 0.0F))
+         && (std::isfinite(cfg.ki_)&&(cfg.ki_ >= 0.0F))
+         && (std::isfinite(cfg.sample_time_)&&(cfg.sample_time_ > 0.0F))
+         && (std::isfinite(cfg.integral_max_)&&(cfg.integral_max_ >= 0.0F))
+         && (std::isfinite(cfg.integral_min_)&&(cfg.integral_min_ <= 0.0F))
         )
         {
-            const float ki_time = cfg.ki * cfg.sample_time;
+            const float ki_time = cfg.ki_ * cfg.sample_time_;
             if (std::isfinite(ki_time))
             {
                 piconfig_ = cfg;
@@ -57,17 +57,17 @@ namespace robot_foc::algorithm
         float error {0.0F};
         if (!configured_)
         {
-            return common::ErrorCode::ErrorInvalidParam;
+            return common::ErrorCode::ErrorNotReady;
         }
         if (std::isfinite(setpoint)&&std::isfinite(feedback))
         {
             error = setpoint - feedback;
-            p = piconfig_.kp * error;
+            p = piconfig_.kp_ * error;
             voltage = p + integral_output_;
             if (std::isfinite(error)&&std::isfinite(voltage))
             {
-                out.error = error;
-                out.request_output = voltage;
+                out.error_ = error;
+                out.request_output_ = voltage;
                 preview_out = out;
                 return common::ErrorCode::Ok;
             }
@@ -78,36 +78,73 @@ namespace robot_foc::algorithm
     [[nodiscard]] common::ErrorCode PiController::prepare_update(
         const PiPreview& preview,
         const common::Volts limited_output,
-        const bool limit_flag,
+        const bool limited_flag,
         PiNextState& next_state_out
     ) const noexcept
     {
         const PiPreview& predata = preview;
-        const common::Volts& limit_volt = limited_output;
-        const bool& flag = limit_flag;
+        const float integral_pre = integral_output_;
+        bool integral_worsens_saturation {false};
+        bool integral_enable {true};
         PiNextState result {};
-        if (std::isfinite(predata.request_output))
+        if (!configured_)
         {
-            /* code */
+            return common::ErrorCode::ErrorNotReady;
         }
-        
-
-
-
+        if ((!std::isfinite(predata.request_output_))
+         || (!std::isfinite(predata.error_))
+         || (!std::isfinite(limited_output))
+        )
+        {
+            return common::ErrorCode::ErrorInvalidParam;
+        }
+        if (limited_flag == true)
+        {
+            // 若是电压进行过限幅，进行积分饱和判断。积分饱和则不允许继续积分
+            integral_worsens_saturation = (((predata.request_output_ > limited_output) && (predata.error_ > 0.0F))
+                                       || (((predata.request_output_ < limited_output) && (predata.error_ < 0.0F))));
+            integral_enable = !integral_worsens_saturation;
+        }
+        if (integral_enable == true)
+        {
+            result.integral_out_ = integral_pre + ki_step_ * predata.error_;
+        }
+        else
+        {
+            result.integral_out_ = integral_pre;
+        }
+        if (result.integral_out_ < piconfig_.integral_min_)
+        {
+            result.integral_out_ = piconfig_.integral_min_;
+        }
+        else if (result.integral_out_ > piconfig_.integral_max_)
+        {
+            result.integral_out_ = piconfig_.integral_max_;
+        }
+        if (!std::isfinite(result.integral_out_))
+        {
+            return common::ErrorCode::ErrorInvalidParam;
+        }
+        next_state_out = result;
         return common::ErrorCode::Ok;
     }
 
-    /**
-     * @brief 确认当前PI状态
-     */
-    void commit(
-        const PiNextState& next_state
-    ) noexcept;
+    common::ErrorCode PiController::commit(const PiNextState& next_state) noexcept
+    {
+        if (!configured_)
+        {
+            return common::ErrorCode::ErrorNotReady;
+        }
+        if ((!std::isfinite(next_state.integral_out_))
+         || (next_state.integral_out_ < piconfig_.integral_min_)
+         || (next_state.integral_out_ > piconfig_.integral_max_))
+        {
+            return common::ErrorCode::ErrorInvalidParam;
+        }
+        integral_output_ = next_state.integral_out_;
+        return common::ErrorCode::Ok;
+    }
 
-
-
-
-    
     PositionalPid::PositionalPid(float kp, float ki, float kd, float out_min,
         float out_max, float integral_min, float integral_max) noexcept
         : kp_ {kp},

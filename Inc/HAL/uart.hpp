@@ -60,10 +60,10 @@ namespace robot_foc::hal
     /// @brief 配置存储结构体
     struct UartConfig
     {
-        std::uint32_t   baudrate = 115200U;
-        UartDataBits    data_bits = UartDataBits::Bits8;
-        UartStopBits    stop_bits = UartStopBits::One;
-        UartParity      parity = UartParity::None;
+        std::uint32_t   baudrate_ {115200U};
+        UartDataBits    data_bits_ {UartDataBits::Bits8};
+        UartStopBits    stop_bits_ {UartStopBits::One};
+        UartParity      parity_ {UartParity::None};
     };
 
     template<std::size_t RxBufferCapacity>
@@ -76,7 +76,7 @@ namespace robot_foc::hal
         /// @brief 是否发生缓冲区满丢包标志
         bool rx_overflow_flag_ {false};
         /// @brief 累计丢弃字节个数
-        std::size_t rx_overflow_count_{0U};
+        std::size_t rx_overflow_count_ {0U};
         /// @brief 配置存储
         UartConfig config_;
 
@@ -90,7 +90,7 @@ namespace robot_foc::hal
          */
         [[nodiscard]] bool validate_config(const UartConfig& cfg) const noexcept
         {
-            if(cfg.baudrate == 0U)
+            if(cfg.baudrate_ == 0U)
             {
                 return false;
             }

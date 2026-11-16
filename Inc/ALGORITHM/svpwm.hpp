@@ -34,30 +34,30 @@ namespace robot_foc::algorithm
     /**
      * @struct SvpwmDuty
      * @brief SVPWM输出三相占空比数据包
-     * @var a_duty A相归一化占空比 [0.0F, 1.0F]
-     * @var b_duty B相归一化占空比 [0.0F, 1.0F]
-     * @var c_duty C相归一化占空比 [0.0F, 1.0F]
+     * @var a_duty_ A相归一化占空比 [0.0F, 1.0F]
+     * @var b_duty_ B相归一化占空比 [0.0F, 1.0F]
+     * @var c_duty_ C相归一化占空比 [0.0F, 1.0F]
      */
     struct SvpwmDuty
     {
-        float a_duty;
-        float b_duty;
-        float c_duty;
+        float a_duty_ {0.0F};
+        float b_duty_ {0.0F};
+        float c_duty_ {0.0F};
     };
 
     /**
      * @struct SvpwmTime
      * @brief SVPWM有效矢量及零矢量作用时间
-     * @var t1_ratio 第一个有效电压矢量作用时间
-     * @var t2_ratio 第二个有效电压矢量作用时间
-     * @var t0_ratio 零电压矢量总作用时间
+     * @var t1_ratio_ 第一个有效电压矢量作用时间
+     * @var t2_ratio_ 第二个有效电压矢量作用时间
+     * @var t0_ratio_ 零电压矢量总作用时间
      * @note [out] 归一化时间比例
      */
     struct SvpwmTime
     {
-        float t1_ratio;
-        float t2_ratio;
-        float t0_ratio;
+        float t1_ratio_ {0.0F};
+        float t2_ratio_ {0.0F};
+        float t0_ratio_ {0.0F};
     };
 
     class Svpwm final
@@ -69,7 +69,6 @@ namespace robot_foc::algorithm
          * @param[out] sector_out     返回原始矢量所在扇区号（1~6），用于后续还原
          * @retval common::ErrorCode::Ok 计算成功
          * @retval common::ErrorCode::ErrorInvalidParam 输入非法
-         * @warning 必须配合 svpwm_back_sector 使用，否则输出占空比相位错误
          */
         [[nodiscard]] static common::ErrorCode svpwm_detect_sector(
             const common::AlphaBetaVoltage& alphabeta_in,
@@ -109,14 +108,14 @@ namespace robot_foc::algorithm
          * @brief 计算电压输出矢量对应的占空比
          * @param[in]  sector_in      原始扇区号，由svpwm_to_one_sector输出得到
          * @param[in]  time_in       计算出的T1,T2,T0
-         * @param[out] dutyout       还原到原始扇区的最终三相占空比
+         * @param[out] duty_out      还原到原始扇区的最终三相占空比
          * @retval common::ErrorCode::Ok 还原成功
          * @retval common::ErrorCode::ErrorInvalidParam 输入不在范围内
          */
         [[nodiscard]] static common::ErrorCode svpwm_calculate_duty(
             const std::uint8_t sector_in,
             const SvpwmTime& time_in,
-            SvpwmDuty& dutyout
+            SvpwmDuty& duty_out
         ) noexcept;
 
     public:
@@ -132,7 +131,7 @@ namespace robot_foc::algorithm
          * @brief SVPWM主计算：αβ电压矢量 + 母线电压 → 三相占空比
          * @param[in]  alphabeta_in 静止坐标系αβ参考电压矢量（限幅后）
          * @param[in]  v_bus        直流母线电压Vbus
-         * @param[out] dutyout     输出三相归一化占空比
+         * @param[out] duty_out    输出三相归一化占空比
          * @retval common::ErrorCode::Ok 计算成功
          * @retval common::ErrorCode::ErrorInvalidParam Vbus非法、输入矢量异常
          * @pre alphabeta_in 必须已经由 VoltageLimit 完成限幅
@@ -145,7 +144,7 @@ namespace robot_foc::algorithm
         [[nodiscard]] static common::ErrorCode svpwm_calculate(
             const common::AlphaBetaVoltage& alphabeta_in,
             common::Volts v_bus,
-            SvpwmDuty& dutyout
+            SvpwmDuty& duty_out
         ) noexcept;
     };    
 } // namespace robot_foc::algorithm

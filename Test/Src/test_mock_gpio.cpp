@@ -40,7 +40,7 @@ void run_gpio_common_tests(robot_foc::hal::Gpio& gpio)
     };
     auto ret_cfg_ok = gpio.configure(valid_cfg);
     ROBOT_FOC_TEST_EXPECT(ret_cfg_ok == ErrorCode::Ok, "GPIO valid configure success");
-    ROBOT_FOC_TEST_EXPECT(gpio.get_config().mode == GpioMode::OutputPushPull, "GPIO config updated after configure");
+    ROBOT_FOC_TEST_EXPECT(gpio.get_config().mode_ == GpioMode::OutputPushPull, "GPIO config updated after configure");
 
     // ========== 第一次初始化，基础功能测试 ==========
     auto ret_init1 = gpio.init();
@@ -55,7 +55,7 @@ void run_gpio_common_tests(robot_foc::hal::Gpio& gpio)
     GpioConfig after_init_cfg = gpio.get_config();
     auto ret_cfg_after_init = gpio.configure(new_cfg);
     ROBOT_FOC_TEST_EXPECT(ret_cfg_after_init == ErrorCode::ErrorAlreadyInit, "GPIO configure reject when initialized");
-    ROBOT_FOC_TEST_EXPECT(gpio.get_config().mode == after_init_cfg.mode, "GPIO config unchanged after init");
+    ROBOT_FOC_TEST_EXPECT(gpio.get_config().mode_ == after_init_cfg.mode_, "GPIO config unchanged after init");
 
     // 切换为输入模式（通用HAL契约，真实硬件也需要遵守）
     auto ret_set_mode_in = gpio.set_mode(GpioMode::Input);
@@ -115,7 +115,7 @@ void run_gpio_common_tests(robot_foc::hal::Gpio& gpio)
     // ========== deinit后：不重新configure，直接init，复用原有配置 ==========
     auto ret_reinit_no_cfg = gpio.init();
     ROBOT_FOC_TEST_EXPECT(ret_reinit_no_cfg == ErrorCode::Ok, "GPIO re-init without re-configure after deinit");
-    ROBOT_FOC_TEST_EXPECT(gpio.get_config().mode == GpioMode::OutputPushPull, "GPIO config preserved after deinit");
+    ROBOT_FOC_TEST_EXPECT(gpio.get_config().mode_ == GpioMode::OutputPushPull, "GPIO config preserved after deinit");
 
 }
 

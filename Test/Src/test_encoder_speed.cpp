@@ -27,7 +27,7 @@ void test_encoder_speed()
         const ErrorCode result = estimator.update(100U, 0.01F, sample);
 
         ROBOT_FOC_TEST_EXPECT(result == ErrorCode::ErrorNotReady,"encoder update before configure rejected");
-        ROBOT_FOC_TEST_EXPECT(sample.delta_counts == 123,"unconfigured update keeps output");
+        ROBOT_FOC_TEST_EXPECT(sample.delta_counts_ == 123,"unconfigured update keeps output");
         ROBOT_FOC_TEST_EXPECT(!estimator.is_configured(),"encoder is not configured by default");
     }
 
@@ -76,9 +76,9 @@ void test_encoder_speed()
         ROBOT_FOC_TEST_EXPECT(configured == ErrorCode::Ok,"baseline case configured");
         ROBOT_FOC_TEST_EXPECT(updated == ErrorCode::Ok,"first encoder sample accepted");
         ROBOT_FOC_TEST_EXPECT(estimator.has_baseline(),"first sample establishes baseline");
-        ROBOT_FOC_TEST_EXPECT(sample.delta_counts == 0,"first sample delta is zero");
-        ROBOT_FOC_TEST_EXPECT(nearly_equal(sample.raw_rpm, 0.0F),"first sample raw speed is zero");
-        ROBOT_FOC_TEST_EXPECT(nearly_equal(sample.filtered_rpm, 0.0F),"first sample filtered speed is zero");
+        ROBOT_FOC_TEST_EXPECT(sample.delta_counts_ == 0,"first sample delta is zero");
+        ROBOT_FOC_TEST_EXPECT(nearly_equal(sample.raw_rpm_, 0.0F),"first sample raw speed is zero");
+        ROBOT_FOC_TEST_EXPECT(nearly_equal(sample.filtered_rpm_, 0.0F),"first sample filtered speed is zero");
     }
 
     // 正向和反向RPM计算：PPR=100，4倍频后CPR=400，40计数/0.1秒等于60RPM。
@@ -92,8 +92,8 @@ void test_encoder_speed()
         ROBOT_FOC_TEST_EXPECT(forward_config == ErrorCode::Ok,"forward speed configured");
         ROBOT_FOC_TEST_EXPECT(forward_baseline == ErrorCode::Ok,"forward baseline accepted");
         ROBOT_FOC_TEST_EXPECT(forward_update == ErrorCode::Ok,"forward speed update accepted");
-        ROBOT_FOC_TEST_EXPECT(forward_sample.delta_counts == 40,"forward delta is positive");
-        ROBOT_FOC_TEST_EXPECT(nearly_equal(forward_sample.raw_rpm, 60.0F),"forward RPM calculation correct");
+        ROBOT_FOC_TEST_EXPECT(forward_sample.delta_counts_ == 40,"forward delta is positive");
+        ROBOT_FOC_TEST_EXPECT(nearly_equal(forward_sample.raw_rpm_, 60.0F),"forward RPM calculation correct");
 
         EncoderSpeedEstimator reverse{};
         EncoderSpeedSample reverse_sample{};
@@ -104,8 +104,8 @@ void test_encoder_speed()
         ROBOT_FOC_TEST_EXPECT(reverse_config == ErrorCode::Ok,"reverse speed configured");
         ROBOT_FOC_TEST_EXPECT(reverse_baseline == ErrorCode::Ok,"reverse baseline accepted");
         ROBOT_FOC_TEST_EXPECT(reverse_update == ErrorCode::Ok,"reverse speed update accepted");
-        ROBOT_FOC_TEST_EXPECT(reverse_sample.delta_counts == -40,"reverse delta is negative");
-        ROBOT_FOC_TEST_EXPECT(nearly_equal(reverse_sample.raw_rpm, -60.0F),"reverse RPM calculation correct");
+        ROBOT_FOC_TEST_EXPECT(reverse_sample.delta_counts_ == -40,"reverse delta is negative");
+        ROBOT_FOC_TEST_EXPECT(nearly_equal(reverse_sample.raw_rpm_, -60.0F),"reverse RPM calculation correct");
     }
 
     // 16位计数器正向与反向回绕。
@@ -119,8 +119,8 @@ void test_encoder_speed()
         ROBOT_FOC_TEST_EXPECT(forward_config == ErrorCode::Ok,"16-bit forward wrap configured");
         ROBOT_FOC_TEST_EXPECT(forward_baseline == ErrorCode::Ok,"16-bit forward wrap baseline accepted");
         ROBOT_FOC_TEST_EXPECT(forward_update == ErrorCode::Ok,"16-bit forward wrap accepted");
-        ROBOT_FOC_TEST_EXPECT(forward_sample.delta_counts == 16,"16-bit forward wrap delta correct");
-        ROBOT_FOC_TEST_EXPECT(nearly_equal(forward_sample.raw_rpm, 24.0F),"16-bit forward wrap RPM correct");
+        ROBOT_FOC_TEST_EXPECT(forward_sample.delta_counts_ == 16,"16-bit forward wrap delta correct");
+        ROBOT_FOC_TEST_EXPECT(nearly_equal(forward_sample.raw_rpm_, 24.0F),"16-bit forward wrap RPM correct");
 
         EncoderSpeedEstimator reverse{};
         EncoderSpeedSample reverse_sample{};
@@ -131,8 +131,8 @@ void test_encoder_speed()
         ROBOT_FOC_TEST_EXPECT(reverse_config == ErrorCode::Ok,"16-bit reverse wrap configured");
         ROBOT_FOC_TEST_EXPECT(reverse_baseline == ErrorCode::Ok,"16-bit reverse wrap baseline accepted");
         ROBOT_FOC_TEST_EXPECT(reverse_update == ErrorCode::Ok,"16-bit reverse wrap accepted");
-        ROBOT_FOC_TEST_EXPECT(reverse_sample.delta_counts == -16,"16-bit reverse wrap delta correct");
-        ROBOT_FOC_TEST_EXPECT(nearly_equal(reverse_sample.raw_rpm, -24.0F),"16-bit reverse wrap RPM correct");
+        ROBOT_FOC_TEST_EXPECT(reverse_sample.delta_counts_ == -16,"16-bit reverse wrap delta correct");
+        ROBOT_FOC_TEST_EXPECT(nearly_equal(reverse_sample.raw_rpm_, -24.0F),"16-bit reverse wrap RPM correct");
     }
 
     // 32位计数器正向与反向回绕。
@@ -148,7 +148,7 @@ void test_encoder_speed()
         ROBOT_FOC_TEST_EXPECT(forward_config == ErrorCode::Ok,"32-bit forward wrap configured");
         ROBOT_FOC_TEST_EXPECT(forward_baseline == ErrorCode::Ok,"32-bit forward wrap baseline accepted");
         ROBOT_FOC_TEST_EXPECT(forward_update == ErrorCode::Ok,"32-bit forward wrap accepted");
-        ROBOT_FOC_TEST_EXPECT(forward_sample.delta_counts == 16,"32-bit forward wrap delta correct");
+        ROBOT_FOC_TEST_EXPECT(forward_sample.delta_counts_ == 16,"32-bit forward wrap delta correct");
 
         EncoderSpeedEstimator reverse{};
         EncoderSpeedSample reverse_sample{};
@@ -159,7 +159,7 @@ void test_encoder_speed()
         ROBOT_FOC_TEST_EXPECT(reverse_config == ErrorCode::Ok,"32-bit reverse wrap configured");
         ROBOT_FOC_TEST_EXPECT(reverse_baseline == ErrorCode::Ok,"32-bit reverse wrap baseline accepted");
         ROBOT_FOC_TEST_EXPECT(reverse_update == ErrorCode::Ok,"32-bit reverse wrap accepted");
-        ROBOT_FOC_TEST_EXPECT(reverse_sample.delta_counts == -16,"32-bit reverse wrap delta correct");
+        ROBOT_FOC_TEST_EXPECT(reverse_sample.delta_counts_ == -16,"32-bit reverse wrap delta correct");
     }
 
     // 非法计数值、半量程歧义和非法采样周期不能污染状态或输出。
@@ -172,7 +172,7 @@ void test_encoder_speed()
         ROBOT_FOC_TEST_EXPECT(configured == ErrorCode::Ok,"invalid-input case configured");
         ROBOT_FOC_TEST_EXPECT(out_of_range == ErrorCode::ErrorInvalidParam,"16-bit out-of-range count rejected");
         ROBOT_FOC_TEST_EXPECT(!estimator.has_baseline(),"invalid count does not establish baseline");
-        ROBOT_FOC_TEST_EXPECT(sample.delta_counts == 123,"invalid count keeps output");
+        ROBOT_FOC_TEST_EXPECT(sample.delta_counts_ == 123,"invalid count keeps output");
 
         const ErrorCode zero_period = estimator.update(0U, 0.0F, sample);
         const ErrorCode negative_period = estimator.update(0U, -0.1F, sample);
@@ -195,7 +195,7 @@ void test_encoder_speed()
         ROBOT_FOC_TEST_EXPECT(baseline == ErrorCode::Ok,"ambiguity case baseline accepted");
         ROBOT_FOC_TEST_EXPECT(ambiguous == ErrorCode::ErrorInvalidParam,"half-range direction ambiguity rejected");
         ROBOT_FOC_TEST_EXPECT(recovery == ErrorCode::Ok,"valid sample accepted after ambiguous sample");
-        ROBOT_FOC_TEST_EXPECT(sample.delta_counts == 1,"ambiguous sample does not advance baseline");
+        ROBOT_FOC_TEST_EXPECT(sample.delta_counts_ == 1,"ambiguous sample does not advance baseline");
     }
 
     // 固定窗口为4：输入RPM序列1、2、3、4、5，滤波输出最终应为3.5。
@@ -214,8 +214,8 @@ void test_encoder_speed()
         {
             const ErrorCode result = estimator.update(counts[index], 1.0F, sample);
             all_updates_ok = all_updates_ok && (result == ErrorCode::Ok);
-            ROBOT_FOC_TEST_EXPECT(nearly_equal(sample.raw_rpm, expected_raw[index]),"encoder raw speed sequence correct");
-            ROBOT_FOC_TEST_EXPECT(nearly_equal(sample.filtered_rpm, expected_filtered[index]),"encoder moving average sequence correct");
+            ROBOT_FOC_TEST_EXPECT(nearly_equal(sample.raw_rpm_, expected_raw[index]),"encoder raw speed sequence correct");
+            ROBOT_FOC_TEST_EXPECT(nearly_equal(sample.filtered_rpm_, expected_filtered[index]),"encoder moving average sequence correct");
         }
 
         ROBOT_FOC_TEST_EXPECT(all_updates_ok,"encoder filter sequence updates succeed");
@@ -242,7 +242,7 @@ void test_encoder_speed()
         ROBOT_FOC_TEST_EXPECT(!baseline_after_reset,"reset clears baseline");
         ROBOT_FOC_TEST_EXPECT(reset_baseline == ErrorCode::Ok,"post-reset baseline accepted");
         ROBOT_FOC_TEST_EXPECT(reset_speed == ErrorCode::Ok,"post-reset speed accepted");
-        ROBOT_FOC_TEST_EXPECT(nearly_equal(sample.filtered_rpm, 1.0F),"reset clears filter history");
+        ROBOT_FOC_TEST_EXPECT(nearly_equal(sample.filtered_rpm_, 1.0F),"reset clears filter history");
 
         const ErrorCode reconfigured = estimator.configure(EncoderSpeedConfig{60U, 16U, 2U});
         const bool baseline_after_reconfigure = estimator.has_baseline();
@@ -254,8 +254,8 @@ void test_encoder_speed()
         ROBOT_FOC_TEST_EXPECT(!baseline_after_reconfigure,"reconfiguration clears baseline");
         ROBOT_FOC_TEST_EXPECT(new_baseline == ErrorCode::Ok,"reconfigured baseline accepted");
         ROBOT_FOC_TEST_EXPECT(new_speed == ErrorCode::Ok,"reconfigured speed accepted");
-        ROBOT_FOC_TEST_EXPECT(nearly_equal(sample.raw_rpm, 1.0F),"reconfigured RPM uses new gain");
-        ROBOT_FOC_TEST_EXPECT(nearly_equal(sample.filtered_rpm, 1.0F),"reconfiguration clears old filter history");
+        ROBOT_FOC_TEST_EXPECT(nearly_equal(sample.raw_rpm_, 1.0F),"reconfigured RPM uses new gain");
+        ROBOT_FOC_TEST_EXPECT(nearly_equal(sample.filtered_rpm_, 1.0F),"reconfiguration clears old filter history");
     }
 }
 
@@ -303,7 +303,7 @@ void test_encoder_speed_closed()
             if (step > kSteadyStart)
             {
                 tracking_ok = tracking_ok &&
-                    (std::fabs(sample.filtered_rpm - real_rpm) <= kTrackingTolerance);
+                    (std::fabs(sample.filtered_rpm_ - real_rpm) <= kTrackingTolerance);
             }
         }
 
@@ -336,7 +336,7 @@ void test_encoder_speed_closed()
             if (step > kSteadyStart)
             {
                 tracking_ok = tracking_ok &&
-                    (std::fabs(sample.filtered_rpm - real_rpm) <= kTrackingTolerance);
+                    (std::fabs(sample.filtered_rpm_ - real_rpm) <= kTrackingTolerance);
             }
         }
 

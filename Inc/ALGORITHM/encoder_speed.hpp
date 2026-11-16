@@ -43,12 +43,12 @@ namespace robot_foc::algorithm
     struct EncoderSpeedConfig
     {
         // 编码器每转物理脉冲数PPR，（原始线数，无倍频）
-        std::uint32_t pulses_per_revolution{0U};
+        std::uint32_t pulses_per_revolution_ {0U};
         // 硬件定时器计数位宽，用于溢出补偿，
             // 算法支持范围8~32，STM32F4实际使用16、32
-        std::uint8_t counter_bits{16U};
+        std::uint8_t counter_bits_ {16U};
         // 正交倍频系数 支持1、2、4
-        std::uint8_t quadrature_gain{4U};
+        std::uint8_t quadrature_gain_ {4U};
     };
     
     /**
@@ -60,11 +60,11 @@ namespace robot_foc::algorithm
     struct EncoderSpeedSample
     {
         // 本次计数差分，带符号
-        std::int32_t delta_counts{0};
+        std::int32_t delta_counts_ {0};
         // 原始未滤波转速，RPM
-        common::Rpm raw_rpm{0.0F};
+        common::Rpm raw_rpm_ {0.0F};
         // 滑动平均滤波后转速,RPM
-        common::Rpm filtered_rpm{0.0F};
+        common::Rpm filtered_rpm_ {0.0F};
     };
     
     class EncoderSpeedEstimator final
@@ -94,9 +94,9 @@ namespace robot_foc::algorithm
         std::uint32_t counts_per_revolution_{0U};
 
         // 判断configure是否配置成功
-        bool configured_{false};
+        bool configured_ {false};
         // 判断已经保存有效的previous_count基线，可以计算差分
-        bool baseline_valid_{false};
+        bool baseline_valid_ {false};
 
     public:
         EncoderSpeedEstimator() noexcept = default;

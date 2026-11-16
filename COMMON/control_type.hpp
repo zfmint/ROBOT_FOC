@@ -17,18 +17,19 @@ namespace robot_foc::common
      */
     struct ABCCurrent
     {
-        common::Amperes a_current = 0.0F;
-        common::Amperes b_current = 0.0F;
-        common::Amperes c_current = 0.0F;
+        common::Amperes a_current_ {0.0F};
+        common::Amperes b_current_ {0.0F};
+        common::Amperes c_current_ {0.0F};
     };
 
     /**
      * @brief 三相电压结构体 A/B/C
-     */    struct ABCVoltage
+     */
+    struct ABCVoltage
     {
-        common::Volts a_volt = 0.0F;
-        common::Volts b_volt = 0.0F;
-        common::Volts c_volt = 0.0F;
+        common::Volts a_volt_ {0.0F};
+        common::Volts b_volt_ {0.0F};
+        common::Volts c_volt_ {0.0F};
     };
 
     /**
@@ -36,8 +37,8 @@ namespace robot_foc::common
      */
     struct ABCurrent
     {
-        common::Amperes a_current = 0.0F;
-        common::Amperes b_current = 0.0F;
+        common::Amperes a_current_ {0.0F};
+        common::Amperes b_current_ {0.0F};
     };
     
     /**
@@ -45,8 +46,8 @@ namespace robot_foc::common
      */
     struct ABVoltage
     {
-        common::Volts a_volt = 0.0F;
-        common::Volts b_volt = 0.0F;
+        common::Volts a_volt_ {0.0F};
+        common::Volts b_volt_ {0.0F};
     };
 
     /**
@@ -54,8 +55,8 @@ namespace robot_foc::common
      */
     struct AlphaBetaCurrent
     {
-        common::Amperes alpha_current = 0.0F;
-        common::Amperes beta_current = 0.0F;
+        common::Amperes alpha_current_ {0.0F};
+        common::Amperes beta_current_ {0.0F};
     };
 
     /**
@@ -63,8 +64,8 @@ namespace robot_foc::common
      */
     struct DQCurrent
     {
-        common::Amperes d_current = 0.0F;
-        common::Amperes q_current = 0.0F;
+        common::Amperes d_current_ {0.0F};
+        common::Amperes q_current_ {0.0F};
     };
     
     /**
@@ -72,8 +73,8 @@ namespace robot_foc::common
      */
     struct AlphaBetaVoltage
     {
-        common::Volts alpha_volt = 0.0F;
-        common::Volts beta_volt = 0.0F;
+        common::Volts alpha_volt_ {0.0F};
+        common::Volts beta_volt_ {0.0F};
     };
 
     /**
@@ -81,8 +82,8 @@ namespace robot_foc::common
      */
     struct DQVoltage
     {
-        common::Volts d_volt = 0.0F;
-        common::Volts q_volt = 0.0F;
+        common::Volts d_volt_ {0.0F};
+        common::Volts q_volt_ {0.0F};
     };
 } // namespace robot_foc::common
 

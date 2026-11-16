@@ -42,14 +42,14 @@ void test_mock_uart()
     // 非法波特率0，configure返回ErrorInvalidParam，原有配置保持不变
     UartConfig origin_cfg = uart.get_config();
     UartConfig bad_baud_cfg;
-    bad_baud_cfg.baudrate = 0U;
+    bad_baud_cfg.baudrate_ = 0U;
     auto ret_cfg_bad = uart.configure(bad_baud_cfg);
     ROBOT_FOC_TEST_EXPECT(ret_cfg_bad == ErrorCode::ErrorInvalidParam, "UART configure baudrate=0 reject");
-    ROBOT_FOC_TEST_EXPECT(uart.get_config().baudrate == origin_cfg.baudrate, "UART bad baud config unchanged");
+    ROBOT_FOC_TEST_EXPECT(uart.get_config().baudrate_ == origin_cfg.baudrate_, "UART bad baud config unchanged");
 
     // 合法配置
     UartConfig valid_cfg;
-    valid_cfg.baudrate = 115200U;
+    valid_cfg.baudrate_ = 115200U;
     auto ret_cfg_ok = uart.configure(valid_cfg);
     ROBOT_FOC_TEST_EXPECT(ret_cfg_ok == ErrorCode::Ok, "UART valid configure success");
 
@@ -62,11 +62,11 @@ void test_mock_uart()
 
     // 已初始化状态下调用configure，拒绝修改，原配置保留
     UartConfig another_cfg;
-    another_cfg.baudrate = 9600U;
+    another_cfg.baudrate_ = 9600U;
     UartConfig after_init_cfg = uart.get_config();
     auto ret_cfg_after_init = uart.configure(another_cfg);
     ROBOT_FOC_TEST_EXPECT(ret_cfg_after_init == ErrorCode::ErrorAlreadyInit, "UART configure reject when initialized");
-    ROBOT_FOC_TEST_EXPECT(uart.get_config().baudrate == after_init_cfg.baudrate, "UART config unchanged after init");
+    ROBOT_FOC_TEST_EXPECT(uart.get_config().baudrate_ == after_init_cfg.baudrate_, "UART config unchanged after init");
 
     // ========== RX接收注入测试（已初始化才可注入） ==========
     auto ret_inject_ok = uart.inject_rx(0x55U);
@@ -138,7 +138,7 @@ void test_mock_uart()
     // ========== deinit后：复用原有配置直接init，不需要重新configure ==========
     auto ret_reinit_no_cfg = uart.init();
     ROBOT_FOC_TEST_EXPECT(ret_reinit_no_cfg == ErrorCode::Ok, "UART re-init without re-configure after deinit");
-    ROBOT_FOC_TEST_EXPECT(uart.get_config().baudrate == 115200U, "UART config preserved after deinit");
+    ROBOT_FOC_TEST_EXPECT(uart.get_config().baudrate_ == 115200U, "UART config preserved after deinit");
 
     // 再deinit，准备多态测试
     (void)uart.deinit();

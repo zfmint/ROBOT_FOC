@@ -34,13 +34,13 @@ namespace robot_foc::algorithm
 
     private:
         //浮点环形缓冲区存储历史采样
-        std::array<float, Capacity> buf_{};
+        std::array<float, Capacity> buf_ {};
         //下一次写入位置索引
-        std::size_t write_idx_{0U};
+        std::size_t write_idx_ {0U};
         //当前窗口有效样本计数
-        std::size_t count_{0U};
+        std::size_t count_ {0U};
         //窗口样本总和，快速计算均值
-        float sum_{0.0F};
+        float sum_ {0.0F};
 
     public:
         SlidingAverage() noexcept = default;

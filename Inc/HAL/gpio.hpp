@@ -54,19 +54,19 @@ namespace robot_foc::hal
     struct GpioPin
     {
         explicit constexpr GpioPin(std::uint8_t number) noexcept
-            : number(number)
+            : number_ {number}
         {
         }
 
-        std::uint8_t number;
+        std::uint8_t number_;
     };
 
     /// @brief GPIO配置参数
     struct GpioConfig
     {
-        GpioMode    mode {GpioMode::Input};
-        GpioPull    pull {GpioPull::NoPull};
-        GpioLevel   init_level {GpioLevel::Low};
+        GpioMode    mode_ {GpioMode::Input};
+        GpioPull    pull_ {GpioPull::NoPull};
+        GpioLevel   init_level_ {GpioLevel::Low};
     };
 
     /**

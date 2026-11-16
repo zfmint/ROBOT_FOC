@@ -21,8 +21,8 @@ namespace robot_foc::algorithm
 {
     struct VoltageLimitOut
     {
-        common::AlphaBetaVoltage alphabeta_out {};
-        bool is_limited {false};
+        common::AlphaBetaVoltage alphabeta_out_ {};
+        bool is_limited_ {false};
     };
 
     class VoltageLimit final

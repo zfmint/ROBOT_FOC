@@ -20,7 +20,7 @@ namespace robot_foc::algorithm
         std::int32_t& delta_counts) const noexcept
     {
         // 计数器环总长度
-        const std::uint64_t counter_modulus = 1ULL << config_.counter_bits;
+        const std::uint64_t counter_modulus = 1ULL << config_.counter_bits_;
         // 计数器最大值
         const std::uint64_t counter_max = counter_modulus - 1ULL;
 
@@ -66,31 +66,31 @@ namespace robot_foc::algorithm
     [[nodiscard]] common::ErrorCode EncoderSpeedEstimator::configure(
         const EncoderSpeedConfig& config) noexcept
     {
-        if (config.pulses_per_revolution == 0U)
+        if (config.pulses_per_revolution_ == 0U)
         {
             return common::ErrorCode::ErrorInvalidParam;
         }
 
-        if (config.counter_bits < 8U || config.counter_bits > 32U)
+        if (config.counter_bits_ < 8U || config.counter_bits_ > 32U)
         {
             return common::ErrorCode::ErrorInvalidParam;
         }
 
-        if ((config.quadrature_gain != 1U) &&
-            (config.quadrature_gain != 2U) &&
-            (config.quadrature_gain != 4U))
+        if ((config.quadrature_gain_ != 1U) &&
+            (config.quadrature_gain_ != 2U) &&
+            (config.quadrature_gain_ != 4U))
         {
             return common::ErrorCode::ErrorInvalidParam;
         }
 
-        if (config.pulses_per_revolution >
-            (std::numeric_limits<std::uint32_t>::max() / config.quadrature_gain))
+        if (config.pulses_per_revolution_ >
+            (std::numeric_limits<std::uint32_t>::max() / config.quadrature_gain_))
         {
             return common::ErrorCode::ErrorInvalidParam;
         }
 
         config_ = config;
-        counts_per_revolution_ = config.pulses_per_revolution * config.quadrature_gain;
+        counts_per_revolution_ = config.pulses_per_revolution_ * config.quadrature_gain_;
         configured_ = true;
         reset();
 
@@ -113,7 +113,7 @@ namespace robot_foc::algorithm
             return common::ErrorCode::ErrorInvalidParam;
         }
 
-        const std::uint64_t counter_max = (1ULL << config_.counter_bits) - 1ULL;
+        const std::uint64_t counter_max = (1ULL << config_.counter_bits_) - 1ULL;
         if (static_cast<std::uint64_t>(current_count) > counter_max)
         {
             return common::ErrorCode::ErrorInvalidParam;
@@ -150,9 +150,9 @@ namespace robot_foc::algorithm
 
         previous_count_ = current_count;
         // 填充输出结构体
-        sample.delta_counts = delta_counts;
-        sample.raw_rpm = raw_rpm;
-        sample.filtered_rpm = filtered_rpm;
+        sample.delta_counts_ = delta_counts;
+        sample.raw_rpm_ = raw_rpm;
+        sample.filtered_rpm_ = filtered_rpm;
 
         return common::ErrorCode::Ok;
     }

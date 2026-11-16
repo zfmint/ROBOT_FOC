@@ -28,10 +28,9 @@ namespace robot_foc::algorithm
         const common::Volts& bus = v_bus;
         VoltageLimitOut result {};
         float v_max {0.0F};
-        float max_projection {0.0F}, projection_1 {0.0F}, projection_2 {0.0F}, projection_3 {0.0F};
         float scale {1.0F};
-        if ((!std::isfinite(voltage_in.alpha_volt))
-          ||(!std::isfinite(voltage_in.beta_volt))
+        if ((!std::isfinite(voltage_in.alpha_volt_))
+          ||(!std::isfinite(voltage_in.beta_volt_))
           ||(!std::isfinite(bus)
           ||(bus <= 0.0F)  
         )
@@ -40,18 +39,50 @@ namespace robot_foc::algorithm
             return common::ErrorCode::ErrorInvalidParam;
         }
         v_max = bus / SQRT3;
-        projection_1 = std::abs(SQRT3_HALF*voltage_in.alpha_volt + HALF*voltage_in.beta_volt);
-        projection_2 = std::abs(voltage_in.beta_volt);
-        projection_3 = std::abs(-SQRT3_HALF*voltage_in.alpha_volt + HALF*voltage_in.beta_volt);
-        max_projection = std::fmaxf(std::fmaxf(projection_1,projection_2),projection_3);
-        if (max_projection > v_max)
+        if ((!std::isfinite(v_max)) || (v_max <= 0.0F))
         {
-            scale = v_max / max_projection;
-            result.is_limited = true;
+            return common::ErrorCode::ErrorInvalidParam;
         }
-        result.alphabeta_out.alpha_volt = scale*voltage_in.alpha_volt;
-        result.alphabeta_out.beta_volt = scale*voltage_in.beta_volt;
-        if (std::isfinite(result.alphabeta_out.alpha_volt) && std::isfinite(result.alphabeta_out.beta_volt))
+
+        // 先按最大输入分量归一化，再计算六边形投影，避免有限大数相加时溢出。
+        const float input_scale = std::fmaxf(
+            std::abs(voltage_in.alpha_volt_),
+            std::abs(voltage_in.beta_volt_)
+        );
+        if (input_scale > 0.0F)
+        {
+            const float alpha_normalized = voltage_in.alpha_volt_ / input_scale;
+            const float beta_normalized = voltage_in.beta_volt_ / input_scale;
+            const float projection_1 = std::abs(
+                (SQRT3_HALF * alpha_normalized) + (HALF * beta_normalized)
+            );
+            const float projection_2 = std::abs(beta_normalized);
+            const float projection_3 = std::abs(
+                (-SQRT3_HALF * alpha_normalized) + (HALF * beta_normalized)
+            );
+            const float max_projection = std::fmaxf(
+                std::fmaxf(projection_1, projection_2),
+                projection_3
+            );
+            if ((!std::isfinite(max_projection)) || (max_projection <= 0.0F))
+            {
+                return common::ErrorCode::ErrorInvalidParam;
+            }
+
+            const float normalized_limit = v_max / input_scale;
+            if (max_projection > normalized_limit)
+            {
+                scale = normalized_limit / max_projection;
+                result.is_limited_ = true;
+            }
+        }
+        if (!std::isfinite(scale))
+        {
+            return common::ErrorCode::ErrorInvalidParam;
+        }
+        result.alphabeta_out_.alpha_volt_ = scale * voltage_in.alpha_volt_;
+        result.alphabeta_out_.beta_volt_ = scale * voltage_in.beta_volt_;
+        if (std::isfinite(result.alphabeta_out_.alpha_volt_) && std::isfinite(result.alphabeta_out_.beta_volt_))
         {
             result_out = result;
             return common::ErrorCode::Ok;
@@ -69,10 +100,9 @@ namespace robot_foc::algorithm
         const common::Volts& bus = v_bus;
         VoltageLimitOut result {};
         float v_max {0.0F};
-        float k {1.0F};
         float amp {0.0F};
-        if ((!std::isfinite(voltage_in.alpha_volt))
-          ||(!std::isfinite(voltage_in.beta_volt))
+        if ((!std::isfinite(voltage_in.alpha_volt_))
+          ||(!std::isfinite(voltage_in.beta_volt_))
           ||(!std::isfinite(bus)
           ||(bus <= 0.0F)  
         )
@@ -81,7 +111,7 @@ namespace robot_foc::algorithm
             return common::ErrorCode::ErrorInvalidParam;
         }
         v_max = bus / SQRT3;
-        amp = std::hypot(voltage_in.alpha_volt, voltage_in.beta_volt);
+        amp = std::hypot(voltage_in.alpha_volt_, voltage_in.beta_volt_);
         if (!std::isfinite(amp)||!std::isfinite(v_max) || (v_max <= 0.0F))
         {
             return common::ErrorCode::ErrorInvalidParam;
@@ -90,11 +120,11 @@ namespace robot_foc::algorithm
         if(amp > v_max)
         {
             scale = v_max / amp;
-            result.is_limited = true;
+            result.is_limited_ = true;
         }
-        result.alphabeta_out.alpha_volt = scale * voltage_in.alpha_volt;
-        result.alphabeta_out.beta_volt  = scale * voltage_in.beta_volt;
-        if (std::isfinite(result.alphabeta_out.alpha_volt) && std::isfinite(result.alphabeta_out.beta_volt))
+        result.alphabeta_out_.alpha_volt_ = scale * voltage_in.alpha_volt_;
+        result.alphabeta_out_.beta_volt_  = scale * voltage_in.beta_volt_;
+        if (std::isfinite(result.alphabeta_out_.alpha_volt_) && std::isfinite(result.alphabeta_out_.beta_volt_))
         {
             result_out = result;
             return common::ErrorCode::Ok;

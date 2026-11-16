@@ -13,12 +13,15 @@ void test_positional_pid();
 void test_positional_pid_closed();
 void test_incremental_pid();
 void test_incremental_pid_closed();
+void test_pi_controller();
+void test_pi_controller_closed();
 void test_sliding_average();
 void test_encoder_speed();
 void test_encoder_speed_closed();
 void test_foc_transform();
 void test_voltage_limit();
 void test_svpwm();
+
 
 int main()
 {
@@ -33,6 +36,8 @@ int main()
     test_positional_pid_closed();
     test_incremental_pid();
     test_incremental_pid_closed();
+    test_pi_controller();
+    test_pi_controller_closed();
     test_sliding_average();
     test_encoder_speed();
     test_encoder_speed_closed();
