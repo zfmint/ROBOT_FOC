@@ -1,18 +1,24 @@
 /**
  * @file pid.cpp
- * @brief PID算法实现：位置式PID、增量式PID
+ * @brief PID算法实现：PiController(分步PI)、位置式PID、增量式PID
  * @details
- *  实现 robot_foc::algorithm 命名空间下 PositionalPid 与 IncrementalPid。
- *  - PositionalPid：实现输出限幅、积分限幅，带抗积分饱和逻辑。
- *  - IncrementalPid：实现增量输出限幅；输出为Δu。
- *  约束：每次 calculate() 调用必须保持固定采样周期。
+ *  实现 robot_foc::algorithm 命名空间下 PiController、PositionalPid 与 IncrementalPid。
+ *  - PiController：分步式电流环PI控制器；preview预计算后，由update_after_limit完成条件积分与状态提交；
+ *    CurrentLoop可通过私有prepare_update/commit完成d/q双轴事务更新。
+ *  - PositionalPid：实现输出限幅、积分限幅，带方向感知条件积分冻结抗积分饱和逻辑。
+ *  - IncrementalPid：实现增量输出限幅；输出为Δu，保存历史误差序列。
+ *  约束：
+ *      1. PiController：严格遵循preview → 限幅 → update_after_limit调用顺序；采样周期由PiConfig.sample_time_配置；
+ *      2. PositionalPid / IncrementalPid：每次 calculate() 调用必须保持固定采样周期。
  * @author Robot_FOC Project
  * @note 接口详细文档参见 pid.hpp；本文件仅实现，不对外暴露API。
  */
+
 #include "ALGORITHM/pid.hpp"
 
 #include <cmath>
 
+#include "error_code.hpp"
 #include "control_type.hpp"
 
 namespace robot_foc::algorithm
@@ -143,6 +149,26 @@ namespace robot_foc::algorithm
         }
         integral_output_ = next_state.integral_out_;
         return common::ErrorCode::Ok;
+    }
+
+    [[nodiscard]] common::ErrorCode PiController::update_after_limit(
+        const PiPreview& preview,
+        const common::Volts limited_output,
+        const bool limit_flag
+    ) noexcept
+    {
+        PiNextState next_state {};
+        const common::ErrorCode prepare_result = prepare_update(
+            preview,
+            limited_output,
+            limit_flag,
+            next_state
+        );
+        if (prepare_result != common::ErrorCode::Ok)
+        {
+            return prepare_result;
+        }
+        return commit(next_state);
     }
 
     PositionalPid::PositionalPid(float kp, float ki, float kd, float out_min,

@@ -75,12 +75,15 @@ namespace robot_foc::algorithm
         float integral_out_ {0.0F};
     };
     
+    class CurrentLoop;
     /**
      * @brief PI控制器(适配电流环控制)
      */
     class PiController final
     {
     private:
+        friend class CurrentLoop;
+
         // PI控制器基础配置
         PiConfig piconfig_ {};
         // 积分运行状态,已经提交的积分输出贡献
@@ -89,6 +92,23 @@ namespace robot_foc::algorithm
         bool configured_ {false};
         // 离散积分系数 Ki * Ts，单位 V/A
         float ki_step_ {0.0F};
+        /**
+         * @brief 根据限幅结果准备PI下一周期状态
+         * @details 仅生成候选状态，不修改内部积分；供CurrentLoop执行双轴事务更新。
+         */
+        [[nodiscard]] common::ErrorCode prepare_update(
+            const PiPreview& preview,
+            common::Volts limited_output,
+            bool limit_flag,
+            PiNextState& next_state_out
+        ) const noexcept;
+
+        /**
+         * @brief 提交并固化PI下一周期状态
+         * @details 仅接受有限且位于积分上下限内的候选状态。
+         */
+        [[nodiscard]] common::ErrorCode commit(const PiNextState& next_state) noexcept;
+
     public:
         PiController() noexcept = default;
         ~PiController() noexcept = default;
@@ -104,7 +124,7 @@ namespace robot_foc::algorithm
          * @details 根据电流设定值与反馈值，计算误差、比例项、原始积分项，
          * @param[in] setpoint DQ轴电流目标设定值
          * @param[in] feedback DQ轴电流采样反馈值
-         * @param[out] preview_out PI预计算结果（原始未限幅电压、误差、比例项、原始积分项等）
+         * @param[out] preview_out PI预计算结果（原始未限幅电压、误差）
          * @retval ErrorCode::Ok 预计算正常完成
          * @retval 其他错误码：输入参数非法
          */
@@ -115,29 +135,22 @@ namespace robot_foc::algorithm
         ) const noexcept;
 
         /**
-         * @brief 限幅后，准备PI下一周期状态（条件积分冻结）
-         * @details 传入预计算结果 + 经过电压限幅后的有效输出，通过抗饱和算法修正积分贡献；
-         *          输出待提交的下一状态，**不直接写入PI内部状态**，需调用commit生效。
-         * @param[in] preview 上一步preview得到的预计算数据包
-         * @param[in] limited_output 经过电压限幅模块约束后的有效电压
-         * @param[in] limit_flag 矢量限幅状态
-         * @param[out] next_state_out 修正后的PI下一状态（积分值等）
-         * @retval ErrorCode::Ok 状态准备完成
-         * @retval 其他错误码：参数非法
+         * @brief 根据本周期限幅结果更新PI内部积分状态
+         * @details 内部依次调用prepare_update()和commit()；任一步失败均不修改积分状态。
+         *          单轴独立使用PiController时调用本接口。CurrentLoop可通过友元接口对d/q双轴
+         *          先统一准备、确认全部成功后再统一提交，避免半更新。
+         * @param[in] preview 本周期preview()产生的预计算结果
+         * @param[in] limited_output 本周期经过限幅后的实际输出电压
+         * @param[in] limit_flag 本周期输出是否发生限幅
+         * @retval ErrorCode::Ok 更新成功
+         * @retval ErrorCode::ErrorNotReady 控制器尚未配置
+         * @retval ErrorCode::ErrorInvalidParam 输入或候选状态非法
          */
-        [[nodiscard]] common::ErrorCode prepare_update(
+        [[nodiscard]] common::ErrorCode update_after_limit(
             const PiPreview& preview,
-            const common::Volts limited_output,
-            const bool limit_flag,
-            PiNextState& next_state_out
-        ) const noexcept;
-
-        /**
-         * @brief 提交并固化PI下一周期状态
-         * @details 将prepare_update算出的新状态写入PI内部，完成一次闭环步进；
-         * @param[in] next_state 由prepare_update输出的待生效状态
-         */
-        [[nodiscard]] common::ErrorCode commit(const PiNextState& next_state) noexcept;
+            common::Volts limited_output,
+            bool limit_flag
+        ) noexcept;
 
         /**
          * @brief 设置PI参数并校验配置合法性

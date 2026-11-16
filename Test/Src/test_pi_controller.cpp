@@ -2,8 +2,8 @@
  * @brief 分步式PiController单元测试
  * @details
  * 调用链路：preview(预计算，只读不修改内部状态)
- *        → prepare_update(条件积分冻结抗饱和，计算下一积分状态)
- *        → commit(固化积分状态到实例，带NaN/Inf防御校验，返回错误码)
+ *        → 外部限幅
+ *        → update_after_limit(条件积分冻结并原子提交下一状态)
  * 抗饱和策略：条件积分冻结；限幅且误差加剧饱和时冻结本拍积分累加；误差反转允许退饱和。
  * 覆盖：配置校验、非法配置不污染旧状态、reset、正常积分累加、正负向抗饱和冻结、积分限幅；
  *      NaN/Inf非法输入、失败不篡改输出参数、未配置保护；
@@ -23,7 +23,6 @@ void test_pi_controller()
     using robot_foc::algorithm::PiController;
     using robot_foc::algorithm::PiConfig;
     using robot_foc::algorithm::PiPreview;
-    using robot_foc::algorithm::PiNextState;
     using robot_foc::common::Amperes;
     using robot_foc::common::Volts;
     using robot_foc::common::Seconds;
@@ -42,27 +41,21 @@ void test_pi_controller()
         ROBOT_FOC_TEST_EXPECT(ret_cfg == ErrorCode::Ok, "pi configure valid ok");
         pi.reset();
         PiPreview pre{};
-        PiNextState next{};
         // 第1周期
         auto ret_pre = pi.preview(Amperes{2.0F}, Amperes{0.0F}, pre);
         ROBOT_FOC_TEST_EXPECT(ret_pre == ErrorCode::Ok, "pi step1 preview ok");
         ROBOT_FOC_TEST_EXPECT(nearly_equal(pre.error_, 2.0F), "pi step1 error");
         ROBOT_FOC_TEST_EXPECT(nearly_equal(static_cast<float>(pre.request_output_), 2.0F), "pi step1 request output");
 
-        auto ret_prep = pi.prepare_update(pre, Volts{2.0F}, false, next);
-        ROBOT_FOC_TEST_EXPECT(ret_prep == ErrorCode::Ok, "pi step1 prepare ok");
-        ROBOT_FOC_TEST_EXPECT(nearly_equal(next.integral_out_, 0.2F), "pi step1 integral accumulate");
-
-        auto ret_commit = pi.commit(next);
-        ROBOT_FOC_TEST_EXPECT(ret_commit == ErrorCode::Ok, "pi step1 commit ok");
-
+        auto ret_update = pi.update_after_limit(pre, Volts{2.0F}, false);
+        ROBOT_FOC_TEST_EXPECT(ret_update == ErrorCode::Ok, "pi step1 update ok");
         // 第2周期
         ret_pre = pi.preview(Amperes{2.0F}, Amperes{0.0F}, pre);
         ROBOT_FOC_TEST_EXPECT(ret_pre == ErrorCode::Ok, "pi step2 preview ok");
         ROBOT_FOC_TEST_EXPECT(nearly_equal(static_cast<float>(pre.request_output_), 2.2F), "pi step2 request output");
     }
 
-    // ========== 测试2：正向饱和‑条件积分冻结 ==========
+    // ========== 测试2：正向饱和-条件积分冻结 ==========
     {
         PiController pi{};
         PiConfig cfg{};
@@ -72,21 +65,19 @@ void test_pi_controller()
         cfg.integral_min_ = -20.0F;
         cfg.integral_max_ = 20.0F;
         auto ret_cfg = pi.configure(cfg);
-        ROBOT_FOC_TEST_EXPECT(ret_cfg == ErrorCode::Ok, "pi anti‑windup configure ok");
+        ROBOT_FOC_TEST_EXPECT(ret_cfg == ErrorCode::Ok, "pi anti-windup configure ok");
         pi.reset();
         PiPreview pre{};
-        PiNextState next{};
         auto ret_pre = pi.preview(Amperes{5.0F}, Amperes{0.0F}, pre);
-        ROBOT_FOC_TEST_EXPECT(ret_pre == ErrorCode::Ok, "pi anti‑windup preview ok");
-        auto ret_prep = pi.prepare_update(pre, Volts{3.0F}, true, next);
-        ROBOT_FOC_TEST_EXPECT(ret_prep == ErrorCode::Ok, "pi anti‑windup prepare ok");
-        ROBOT_FOC_TEST_EXPECT(nearly_equal(next.integral_out_, 0.0F), "pi positive saturate freeze integral");
-
-        auto ret_commit = pi.commit(next);
-        ROBOT_FOC_TEST_EXPECT(ret_commit == ErrorCode::Ok, "pi anti‑windup commit ok");
+        ROBOT_FOC_TEST_EXPECT(ret_pre == ErrorCode::Ok, "pi anti-windup preview ok");
+        auto ret_update = pi.update_after_limit(pre, Volts{3.0F}, true);
+        ROBOT_FOC_TEST_EXPECT(ret_update == ErrorCode::Ok, "pi anti-windup update ok");
+        ret_pre = pi.preview(Amperes{5.0F}, Amperes{0.0F}, pre);
+        ROBOT_FOC_TEST_EXPECT(ret_pre == ErrorCode::Ok, "pi anti-windup verify preview ok");
+        ROBOT_FOC_TEST_EXPECT(nearly_equal(pre.request_output_, 5.0F), "pi positive saturate freeze integral");
     }
 
-    // ========== 测试3：负向饱和‑条件积分冻结 ==========
+    // ========== 测试3：负向饱和-条件积分冻结 ==========
     {
         PiController pi{};
         PiConfig cfg{};
@@ -96,15 +87,16 @@ void test_pi_controller()
         cfg.integral_min_ = -20.0F;
         cfg.integral_max_ = 20.0F;
         auto ret_cfg = pi.configure(cfg);
-        ROBOT_FOC_TEST_EXPECT(ret_cfg == ErrorCode::Ok, "pi neg anti‑windup configure ok");
+        ROBOT_FOC_TEST_EXPECT(ret_cfg == ErrorCode::Ok, "pi neg anti-windup configure ok");
         pi.reset();
         PiPreview pre{};
-        PiNextState next{};
         auto ret_pre = pi.preview(Amperes{-5.0F}, Amperes{0.0F}, pre);
-        ROBOT_FOC_TEST_EXPECT(ret_pre == ErrorCode::Ok, "pi neg anti‑windup preview ok");
-        auto ret_prep = pi.prepare_update(pre, Volts{-3.0F}, true, next);
-        ROBOT_FOC_TEST_EXPECT(ret_prep == ErrorCode::Ok, "pi neg anti‑windup prepare ok");
-        ROBOT_FOC_TEST_EXPECT(nearly_equal(next.integral_out_, 0.0F), "pi negative saturate freeze integral");
+        ROBOT_FOC_TEST_EXPECT(ret_pre == ErrorCode::Ok, "pi neg anti-windup preview ok");
+        auto ret_update = pi.update_after_limit(pre, Volts{-3.0F}, true);
+        ROBOT_FOC_TEST_EXPECT(ret_update == ErrorCode::Ok, "pi neg anti-windup update ok");
+        ret_pre = pi.preview(Amperes{-5.0F}, Amperes{0.0F}, pre);
+        ROBOT_FOC_TEST_EXPECT(ret_pre == ErrorCode::Ok, "pi neg anti-windup verify preview ok");
+        ROBOT_FOC_TEST_EXPECT(nearly_equal(pre.request_output_, -5.0F), "pi negative saturate freeze integral");
     }
 
     // ========== 测试4：积分上下限钳位 ==========
@@ -120,29 +112,28 @@ void test_pi_controller()
         ROBOT_FOC_TEST_EXPECT(ret_cfg == ErrorCode::Ok, "pi integral clamp configure ok");
         pi.reset();
         PiPreview pre{};
-        PiNextState next{};
         for(int i = 0; i < 10; ++i)
         {
             auto ret_pre = pi.preview(Amperes{1.0F}, Amperes{0.0F}, pre);
             ROBOT_FOC_TEST_EXPECT(ret_pre == ErrorCode::Ok, "pi clamp loop preview ok");
-            auto ret_prep = pi.prepare_update(pre, Volts{0.0F}, false, next);
-            ROBOT_FOC_TEST_EXPECT(ret_prep == ErrorCode::Ok, "pi clamp loop prepare ok");
-            auto ret_commit = pi.commit(next);
-            ROBOT_FOC_TEST_EXPECT(ret_commit == ErrorCode::Ok, "pi clamp loop commit ok");
+            auto ret_update = pi.update_after_limit(pre, Volts{0.0F}, false);
+            ROBOT_FOC_TEST_EXPECT(ret_update == ErrorCode::Ok, "pi clamp loop update ok");
         }
-        ROBOT_FOC_TEST_EXPECT(nearly_equal(next.integral_out_, 5.0F),"pi integral clamp upper limit");
+        auto ret_pre = pi.preview(Amperes{0.0F}, Amperes{0.0F}, pre);
+        ROBOT_FOC_TEST_EXPECT(ret_pre == ErrorCode::Ok, "pi upper clamp verify preview ok");
+        ROBOT_FOC_TEST_EXPECT(nearly_equal(pre.request_output_, 5.0F), "pi integral clamp upper limit");
 
         pi.reset();
         for(int i = 0; i < 10; ++i)
         {
-            auto ret_pre = pi.preview(Amperes{-1.0F}, Amperes{0.0F}, pre);
+            ret_pre = pi.preview(Amperes{-1.0F}, Amperes{0.0F}, pre);
             ROBOT_FOC_TEST_EXPECT(ret_pre == ErrorCode::Ok, "pi neg clamp loop preview ok");
-            auto ret_prep = pi.prepare_update(pre, Volts{0.0F}, false, next);
-            ROBOT_FOC_TEST_EXPECT(ret_prep == ErrorCode::Ok, "pi neg clamp loop prepare ok");
-            auto ret_commit = pi.commit(next);
-            ROBOT_FOC_TEST_EXPECT(ret_commit == ErrorCode::Ok, "pi neg clamp loop commit ok");
+            auto ret_update = pi.update_after_limit(pre, Volts{0.0F}, false);
+            ROBOT_FOC_TEST_EXPECT(ret_update == ErrorCode::Ok, "pi neg clamp loop update ok");
         }
-        ROBOT_FOC_TEST_EXPECT(nearly_equal(next.integral_out_, -5.0F),"pi integral clamp lower limit");
+        ret_pre = pi.preview(Amperes{0.0F}, Amperes{0.0F}, pre);
+        ROBOT_FOC_TEST_EXPECT(ret_pre == ErrorCode::Ok, "pi lower clamp verify preview ok");
+        ROBOT_FOC_TEST_EXPECT(nearly_equal(pre.request_output_, -5.0F), "pi integral clamp lower limit");
     }
 
     // ========== 测试5：reset复位清零积分 ==========
@@ -158,15 +149,12 @@ void test_pi_controller()
         ROBOT_FOC_TEST_EXPECT(ret_cfg == ErrorCode::Ok, "pi reset configure ok");
 
         PiPreview pre{};
-        PiNextState next{};
         for(int i=0;i<5;i++)
         {
             auto ret_pre = pi.preview(Amperes{3.0F}, Amperes{0.0F}, pre);
-            ROBOT_FOC_TEST_EXPECT(ret_pre == ErrorCode::Ok, "pi reset‑fill preview ok");
-            auto ret_prep = pi.prepare_update(pre, Volts{0.0F}, false, next);
-            ROBOT_FOC_TEST_EXPECT(ret_prep == ErrorCode::Ok, "pi reset‑fill prepare ok");
-            auto ret_commit = pi.commit(next);
-            ROBOT_FOC_TEST_EXPECT(ret_commit == ErrorCode::Ok, "pi reset‑fill commit ok");
+            ROBOT_FOC_TEST_EXPECT(ret_pre == ErrorCode::Ok, "pi reset-fill preview ok");
+            auto ret_update = pi.update_after_limit(pre, Volts{0.0F}, false);
+            ROBOT_FOC_TEST_EXPECT(ret_update == ErrorCode::Ok, "pi reset-fill update ok");
         }
 
         pi.reset();
@@ -189,13 +177,10 @@ void test_pi_controller()
 
         // 跑一轮，制造积分状态
         PiPreview pre{};
-        PiNextState next{};
         auto ret_pre = pi.preview(Amperes{2.0F}, Amperes{0.0F}, pre);
-        ROBOT_FOC_TEST_EXPECT(ret_pre == ErrorCode::Ok, "pi pre‑badcfg preview ok");
-        auto ret_prep = pi.prepare_update(pre, Volts{0}, false, next);
-        ROBOT_FOC_TEST_EXPECT(ret_prep == ErrorCode::Ok, "pi pre‑badcfg prepare ok");
-        auto ret_commit = pi.commit(next);
-        ROBOT_FOC_TEST_EXPECT(ret_commit == ErrorCode::Ok, "pi pre‑badcfg commit ok");
+        ROBOT_FOC_TEST_EXPECT(ret_pre == ErrorCode::Ok, "pi pre-badcfg preview ok");
+        auto ret_update = pi.update_after_limit(pre, Volts{0}, false);
+        ROBOT_FOC_TEST_EXPECT(ret_update == ErrorCode::Ok, "pi pre-badcfg update ok");
 
         // 传入非法配置，应当返回错误，**不覆盖原有参数、不清除现有积分状态**
         PiConfig bad_cfg = good_cfg;
@@ -210,19 +195,15 @@ void test_pi_controller()
         ROBOT_FOC_TEST_EXPECT(std::fabs(static_cast<float>(pre.request_output_)) > 0.001F, "pi bad configure keep old integral state");
     }
 
-    // ========== 测试7：未配置状态保护 preview / prepare_update / commit ==========
+    // ========== 测试7：未配置状态保护 preview / update_after_limit ==========
     {
         using robot_foc::algorithm::PiPreview;
-        using robot_foc::algorithm::PiNextState;
         PiController pi{};
         PiPreview pre{};    // {} 值初始化，全部成员置0
-        PiNextState next{}; // {} 值初始化
         auto ret_pre = pi.preview(Amperes{1.0F}, Amperes{0.0F}, pre);
         ROBOT_FOC_TEST_EXPECT(ret_pre == ErrorCode::ErrorNotReady, "pi preview before configure reject");
-        auto ret_prep = pi.prepare_update(pre, Volts{0.0F}, false, next);
-        ROBOT_FOC_TEST_EXPECT(ret_prep == ErrorCode::ErrorNotReady, "pi prepare_update before configure reject");
-        auto ret_commit = pi.commit(next);
-        ROBOT_FOC_TEST_EXPECT(ret_commit == ErrorCode::ErrorNotReady, "pi commit before configure reject");
+        auto ret_update = pi.update_after_limit(pre, Volts{0.0F}, false);
+        ROBOT_FOC_TEST_EXPECT(ret_update == ErrorCode::ErrorNotReady, "pi update before configure reject");
     }
 
     // ========== 测试8：NaN / Inf输入 preview；输出参数不篡改（保留脏值） ==========
@@ -235,7 +216,7 @@ void test_pi_controller()
         cfg.integral_min_ = -10;
         cfg.integral_max_ = 10;
         auto ret_cfg = pi.configure(cfg);
-        ROBOT_FOC_TEST_EXPECT(ret_cfg == ErrorCode::Ok, "pi nan‑inf configure ok");
+        ROBOT_FOC_TEST_EXPECT(ret_cfg == ErrorCode::Ok, "pi nan-inf configure ok");
 
         PiPreview pre{};
         // 预先写入脏值，失败不修改输出结构体
@@ -254,7 +235,7 @@ void test_pi_controller()
         ROBOT_FOC_TEST_EXPECT(nearly_equal(pre.error_,777.0F), "pi preview inf preserve error");
     }
 
-    // ========== 测试9：prepare_update 非法输入，输出next_state_out不篡改脏值 ==========
+    // ========== 测试9：update_after_limit非法输入不篡改内部积分状态 ==========
     {
         PiController pi{};
         PiConfig cfg{};
@@ -266,44 +247,24 @@ void test_pi_controller()
         auto ret_cfg = pi.configure(cfg);
         ROBOT_FOC_TEST_EXPECT(ret_cfg == ErrorCode::Ok, "pi prepare nan configure ok");
 
+        PiPreview valid_pre{};
+        auto ret_pre = pi.preview(Amperes{1.0F}, Amperes{0.0F}, valid_pre);
+        ROBOT_FOC_TEST_EXPECT(ret_pre == ErrorCode::Ok, "pi prepare valid state preview ok");
+        auto ret_update = pi.update_after_limit(valid_pre, Volts{1.0F}, false);
+        ROBOT_FOC_TEST_EXPECT(ret_update == ErrorCode::Ok, "pi prepare valid state update ok");
+
         PiPreview bad_pre{};
         bad_pre.error_ = NAN;
         bad_pre.request_output_ = Volts{5.0F};
+        ret_update = pi.update_after_limit(bad_pre, Volts{3.0F}, true);
+        ROBOT_FOC_TEST_EXPECT(ret_update == ErrorCode::ErrorInvalidParam, "pi update detect nan in preview");
 
-        PiNextState next{};
-        next.integral_out_ = 1234.0F; //脏值
-        auto ret = pi.prepare_update(bad_pre, Volts{3.0F}, true, next);
-        ROBOT_FOC_TEST_EXPECT(ret == ErrorCode::ErrorInvalidParam, "pi prepare_update detect nan in preview");
-        ROBOT_FOC_TEST_EXPECT(nearly_equal(next.integral_out_,1234.0F), "pi prepare_update fail preserve next_state_out");
-    }
-
-    // ========== 测试10：commit拒绝非有限值和越界状态，内部积分保持不变 ==========
-    {
-        PiController pi{};
-        PiConfig cfg{};
-        cfg.kp_ = 0.0F;
-        cfg.ki_ = 1.0F;
-        cfg.sample_time_ = Seconds{0.001F};
-        cfg.integral_min_ = -1.0F;
-        cfg.integral_max_ = 1.0F;
-        ROBOT_FOC_TEST_EXPECT(pi.configure(cfg) == ErrorCode::Ok, "pi commit guard configure ok");
-
-        PiNextState invalid_state{};
-        invalid_state.integral_out_ = NAN;
-        ROBOT_FOC_TEST_EXPECT(pi.commit(invalid_state) == ErrorCode::ErrorInvalidParam, "pi commit reject nan");
-        invalid_state.integral_out_ = 2.0F;
-        ROBOT_FOC_TEST_EXPECT(pi.commit(invalid_state) == ErrorCode::ErrorInvalidParam, "pi commit reject upper overflow");
-        invalid_state.integral_out_ = -2.0F;
-        ROBOT_FOC_TEST_EXPECT(pi.commit(invalid_state) == ErrorCode::ErrorInvalidParam, "pi commit reject lower overflow");
-
-        PiPreview pre{};
+        PiPreview verify_pre{};
+        ret_pre = pi.preview(Amperes{0.0F}, Amperes{0.0F}, verify_pre);
+        ROBOT_FOC_TEST_EXPECT(ret_pre == ErrorCode::Ok, "pi verify state after failed update");
         ROBOT_FOC_TEST_EXPECT(
-            pi.preview(Amperes{0.0F}, Amperes{0.0F}, pre) == ErrorCode::Ok,
-            "pi preview after rejected commit ok"
-        );
-        ROBOT_FOC_TEST_EXPECT(
-            nearly_equal(static_cast<float>(pre.request_output_), 0.0F),
-            "pi rejected commit preserves integral state"
+            nearly_equal(verify_pre.request_output_, 0.1F),
+            "pi failed update preserves integral state"
         );
     }
 }
@@ -311,7 +272,7 @@ void test_pi_controller()
 /**
  * @brief 分步式PI闭环阶跃响应测试
  * @details
- * 仿真流程：preview得到原始输出 → 外部限幅得到limited_out与limited_flag → prepare_update计算下一积分状态 → commit更新PI
+ * 仿真流程：preview得到原始输出 → 外部限幅得到limited_out与limited_flag → update_after_limit更新PI
  * 将PI输出电压送给一阶惯性MockPlant，验证阶跃跟踪、稳态误差与超调
  */
 void test_pi_controller_closed()
@@ -350,8 +311,6 @@ void test_pi_controller_closed()
     for (size_t i = 0; i < sim_steps; i++)
     {
         robot_foc::algorithm::PiPreview pre{};
-        robot_foc::algorithm::PiNextState next{};
-
         auto ret_pre = pi.preview(Amperes{set_current}, Amperes{fb}, pre);
         ROBOT_FOC_TEST_EXPECT(ret_pre == ErrorCode::Ok, "pi closed preview ok");
 
@@ -373,11 +332,8 @@ void test_pi_controller_closed()
             limited_u = raw_u;
         }
 
-        auto ret_prep = pi.prepare_update(pre, Volts{limited_u}, limited_flag, next);
-        ROBOT_FOC_TEST_EXPECT(ret_prep == ErrorCode::Ok, "pi closed prepare_update ok");
-
-        auto ret_commit = pi.commit(next);
-        ROBOT_FOC_TEST_EXPECT(ret_commit == ErrorCode::Ok, "pi closed commit ok");
+        auto ret_update = pi.update_after_limit(pre, Volts{limited_u}, limited_flag);
+        ROBOT_FOC_TEST_EXPECT(ret_update == ErrorCode::Ok, "pi closed update_after_limit ok");
 
         fb = plant.update(limited_u);
         if(fb > fb_max)
