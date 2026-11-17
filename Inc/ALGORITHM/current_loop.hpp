@@ -59,8 +59,8 @@ namespace robot_foc::algorithm
              * @retval ErrorInvalidParam 输入存在NaN/Inf非法数值
              */
             [[nodiscard]] common::ErrorCode calculate(
-                const CurrentLoopInput& input,
-                SvpwmDuty& duty_out
+                const CurrentLoopInput& current_input,
+                SvpwmDuty& duty_output
             ) noexcept;
 
             /**
