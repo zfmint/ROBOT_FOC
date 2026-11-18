@@ -84,15 +84,14 @@ namespace robot_foc::algorithm
     [[nodiscard]] common::ErrorCode PiController::prepare_update(
         const PiPreview& preview,
         const common::Volts limited_output,
-        const bool limited_flag,
-        PiNextState& next_state_out
+        const bool limited_flag
     ) const noexcept
     {
         const PiPreview& predata = preview;
         const float integral_pre = integral_output_;
+        common::Volts result {0.0F};
         bool integral_worsens_saturation {false};
         bool integral_enable {true};
-        PiNextState result {};
         if (!configured_)
         {
             return common::ErrorCode::ErrorNotReady;
@@ -113,41 +112,25 @@ namespace robot_foc::algorithm
         }
         if (integral_enable == true)
         {
-            result.integral_out_ = integral_pre + ki_step_ * predata.error_;
+            result = integral_pre + ki_step_ * predata.error_;
         }
         else
         {
-            result.integral_out_ = integral_pre;
+            result = integral_pre;
         }
-        if (result.integral_out_ < piconfig_.integral_min_)
+        if (result < piconfig_.integral_min_)
         {
-            result.integral_out_ = piconfig_.integral_min_;
+            result = piconfig_.integral_min_;
         }
-        else if (result.integral_out_ > piconfig_.integral_max_)
+        else if (result > piconfig_.integral_max_)
         {
-            result.integral_out_ = piconfig_.integral_max_;
+            result = piconfig_.integral_max_;
         }
-        if (!std::isfinite(result.integral_out_))
-        {
-            return common::ErrorCode::ErrorInvalidParam;
-        }
-        next_state_out = result;
-        return common::ErrorCode::Ok;
-    }
-
-    common::ErrorCode PiController::commit(const PiNextState& next_state) noexcept
-    {
-        if (!configured_)
-        {
-            return common::ErrorCode::ErrorNotReady;
-        }
-        if ((!std::isfinite(next_state.integral_out_))
-         || (next_state.integral_out_ < piconfig_.integral_min_)
-         || (next_state.integral_out_ > piconfig_.integral_max_))
+        if (!std::isfinite(result))
         {
             return common::ErrorCode::ErrorInvalidParam;
         }
-        integral_output_ = next_state.integral_out_;
+        integral_output_ = result;
         return common::ErrorCode::Ok;
     }
 
@@ -157,18 +140,17 @@ namespace robot_foc::algorithm
         const bool limit_flag
     ) noexcept
     {
-        PiNextState next_state {};
         const common::ErrorCode prepare_result = prepare_update(
             preview,
             limited_output,
             limit_flag,
-            next_state
         );
         if (prepare_result != common::ErrorCode::Ok)
         {
             return prepare_result;
         }
-        return commit(next_state);
+        commit(nextstate);
+        return common::ErrorCode::Ok;
     }
 
     PositionalPid::PositionalPid(float kp, float ki, float kd, float out_min,

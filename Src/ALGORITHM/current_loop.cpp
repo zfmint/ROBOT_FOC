@@ -119,15 +119,36 @@ namespace robot_foc::algorithm
         {
             return ret_svpwm;
         }
-        auto ret_piupdate = PiController::update_after_limit(
+        auto ret_idupdate = id_cfg_.PiController::update_after_limit(
             id_pre,
-            const common::Volts limited_output,
-            const bool limit_flag
+            limit_result.alphabeta_out_.alpha_volt_,
+            limit_result.is_limited_,
+            idstate
         ) ;
-
-
-
-        
+        if (ret_idupdate != common::ErrorCode::Ok)
+        {
+            return ret_idupdate;
+        }
+        auto ret_iqupdate = id_cfg_.PiController::update_after_limit(
+            iq_pre,
+            limit_result.alphabeta_out_.beta_volt_,
+            limit_result.is_limited_,
+            iqstate
+        ) ;
+        if (ret_iqupdate != common::ErrorCode::Ok)
+        {
+            return ret_iqupdate;
+        }
+        auto ret_out = Svpwm::svpwm_calculate(
+            limit_result.alphabeta_out_,
+            input.v_bus_,
+            result
+        );
+        if (ret_out != common::ErrorCode::Ok)
+        {
+            return ret_out;
+        }
+        duty_output = result;
     }
 
 } // namespace robot::foc::algorithm

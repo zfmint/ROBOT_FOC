@@ -34,7 +34,6 @@
 
 #include "units.hpp"
 #include "error_code.hpp"
-#include "control_type.hpp"
 
 namespace robot_foc::algorithm
 {
@@ -51,8 +50,8 @@ namespace robot_foc::algorithm
         float kp_ {0.0F};
         float ki_ {0.0F};
         common::Seconds sample_time_ {0.0F};
-        float integral_min_ {0.0F};
-        float integral_max_ {0.0F};
+        common::Volts integral_min_ {0.0F};
+        common::Volts integral_max_ {0.0F};
     };
     
     /**
@@ -72,7 +71,7 @@ namespace robot_foc::algorithm
      */
     struct PiNextState
     {
-        float integral_out_ {0.0F};
+        common::Volts integral_out_ {0.0F};
     };
     
     class CurrentLoop;
@@ -87,7 +86,7 @@ namespace robot_foc::algorithm
         // PI控制器基础配置
         PiConfig piconfig_ {};
         // 积分运行状态,已经提交的积分输出贡献
-        float integral_output_ {0.0F};
+        common::Volts integral_output_ {0.0F};
         // 控制器配置完成标志位
         bool configured_ {false};
         // 离散积分系数 Ki * Ts，单位 V/A
@@ -107,7 +106,7 @@ namespace robot_foc::algorithm
          * @brief 提交并固化PI下一周期状态
          * @details 仅接受有限且位于积分上下限内的候选状态。
          */
-        [[nodiscard]] common::ErrorCode commit(const PiNextState& next_state) noexcept;
+        void commit(const PiNextState& next_state) noexcept;
 
     public:
         PiController() noexcept = default;
@@ -162,7 +161,7 @@ namespace robot_foc::algorithm
         
         /**
          * @brief 重置PI运行时状态
-         * @details 清零积分缓存、误差历史等动态状态；
+         * @details 清零积分状态；
          * @note 保留原有configure的增益配置不变
          */
         void reset() noexcept;
