@@ -12,10 +12,6 @@
 #include "ALGORITHM/current_loop.hpp"
 
 #include "units.hpp"
-#include "error_code.hpp"
-#include "control_type.hpp"
-#include "ALGORITHM/svpwm.hpp"
-#include "ALGORITHM/pid.hpp"
 #include "ALGORITHM/foc_transform.hpp"
 #include "ALGORITHM/voltage_limit.hpp"
 
@@ -30,12 +26,12 @@ namespace robot_foc::algorithm
         {
             return common::ErrorCode::ErrorAlreadyInit;
         }
-        auto ret_id = id_cfg_.configure(id_config);
+        auto ret_id = pi_id_.configure(id_config);
         if (ret_id != common::ErrorCode::Ok)
         {
             return ret_id;
         }
-        auto ret_iq = iq_cfg_.configure(iq_config);
+        auto ret_iq = pi_iq_.configure(iq_config);
         if (ret_iq != common::ErrorCode::Ok)
         {
             return ret_iq;
@@ -46,8 +42,8 @@ namespace robot_foc::algorithm
 
     void CurrentLoop::reset() noexcept
     {
-        id_cfg_.reset();
-        iq_cfg_.reset();
+        pi_id_.reset();
+        pi_iq_.reset();
     }
 
     [[nodiscard]] common::ErrorCode CurrentLoop::calculate(
@@ -59,15 +55,15 @@ namespace robot_foc::algorithm
         common::DQVoltage volt_piout;
         common::AlphaBetaVoltage volt_inversepark;
         common::DQVoltage volt_parkout;
+        common::Volts id_next, iq_next;
         VoltageLimitOut limit_result;
-        PiNextState idstate, iqstate;
         SvpwmDuty result;
         PiPreview id_pre, iq_pre;
         if (!configured_)
         {
-            return common::ErrorCode::ErrorInvalidParam;
+            return common::ErrorCode::ErrorNotReady;
         }
-        auto ret_id = id_cfg_.PiController::preview(
+        auto ret_id = pi_id_.PiController::preview(
             input.current_reference_.d_current_,
             input.current_feedback_.d_current_,
             id_pre 
@@ -77,7 +73,7 @@ namespace robot_foc::algorithm
             return ret_id;
         }
         volt_piout.d_volt_= id_pre.request_output_;
-        auto ret_iq = id_cfg_.PiController::preview(
+        auto ret_iq = pi_iq_.PiController::preview(
             input.current_reference_.q_current_,
             input.current_feedback_.q_current_,
             iq_pre 
@@ -110,6 +106,26 @@ namespace robot_foc::algorithm
         {
             return ret_park;
         }
+        auto ret_idupdate = pi_id_.PiController::prepare_update(
+            id_pre,
+            volt_parkout.d_volt_,
+            limit_result.is_limited_,
+            id_next
+        );
+        if (ret_idupdate != common::ErrorCode::Ok)
+        {
+            return ret_idupdate;
+        }
+        auto ret_iqupdate = pi_iq_.PiController::prepare_update(
+            iq_pre,
+            volt_parkout.q_volt_,
+            limit_result.is_limited_,
+            iq_next
+        );
+        if (ret_iqupdate != common::ErrorCode::Ok)
+        {
+            return ret_iqupdate;
+        }
         auto ret_svpwm = Svpwm::svpwm_calculate(
             limit_result.alphabeta_out_,
             input.v_bus_,
@@ -119,36 +135,10 @@ namespace robot_foc::algorithm
         {
             return ret_svpwm;
         }
-        auto ret_idupdate = id_cfg_.PiController::update_after_limit(
-            id_pre,
-            limit_result.alphabeta_out_.alpha_volt_,
-            limit_result.is_limited_,
-            idstate
-        ) ;
-        if (ret_idupdate != common::ErrorCode::Ok)
-        {
-            return ret_idupdate;
-        }
-        auto ret_iqupdate = id_cfg_.PiController::update_after_limit(
-            iq_pre,
-            limit_result.alphabeta_out_.beta_volt_,
-            limit_result.is_limited_,
-            iqstate
-        ) ;
-        if (ret_iqupdate != common::ErrorCode::Ok)
-        {
-            return ret_iqupdate;
-        }
-        auto ret_out = Svpwm::svpwm_calculate(
-            limit_result.alphabeta_out_,
-            input.v_bus_,
-            result
-        );
-        if (ret_out != common::ErrorCode::Ok)
-        {
-            return ret_out;
-        }
+        pi_id_.PiController::commit(id_next);
+        pi_iq_.PiController::commit(iq_next);
         duty_output = result;
+        return common::ErrorCode::Ok;
     }
 
 } // namespace robot::foc::algorithm

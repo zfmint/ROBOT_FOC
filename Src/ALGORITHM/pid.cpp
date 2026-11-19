@@ -1,25 +1,16 @@
 /**
  * @file pid.cpp
- * @brief PID算法实现：PiController(分步PI)、位置式PID、增量式PID
+ * @brief 电流环PI、位置式PID和增量式PID控制算法实现。
  * @details
- *  实现 robot_foc::algorithm 命名空间下 PiController、PositionalPid 与 IncrementalPid。
- *  - PiController：分步式电流环PI控制器；preview预计算后，由update_after_limit完成条件积分与状态提交；
- *    CurrentLoop可通过私有prepare_update/commit完成d/q双轴事务更新。
- *  - PositionalPid：实现输出限幅、积分限幅，带方向感知条件积分冻结抗积分饱和逻辑。
- *  - IncrementalPid：实现增量输出限幅；输出为Δu，保存历史误差序列。
- *  约束：
- *      1. PiController：严格遵循preview → 限幅 → update_after_limit调用顺序；采样周期由PiConfig.sample_time_配置；
- *      2. PositionalPid / IncrementalPid：每次 calculate() 调用必须保持固定采样周期。
- * @author Robot_FOC Project
- * @note 接口详细文档参见 pid.hpp；本文件仅实现，不对外暴露API。
+ * PiController使用两阶段状态更新：preview()生成请求电压，prepare_update()依据外部限幅
+ * 结果生成积分候选值，commit()由CurrentLoop在d/q两路均成功后统一执行。
+ * PositionalPid采用方向感知条件积分，IncrementalPid输出控制增量。
+ * @note 对外接口、错误语义和调用前置条件参见pid.hpp。
  */
 
 #include "ALGORITHM/pid.hpp"
 
 #include <cmath>
-
-#include "error_code.hpp"
-#include "control_type.hpp"
 
 namespace robot_foc::algorithm
 {
@@ -49,6 +40,11 @@ namespace robot_foc::algorithm
     void PiController::reset() noexcept
     {
         integral_output_ = 0.0F;
+    }
+
+    void PiController::commit(common::Volts next_integral) noexcept
+    {
+        integral_output_ = next_integral;
     }
 
     [[nodiscard]] common::ErrorCode PiController::preview(
@@ -83,12 +79,13 @@ namespace robot_foc::algorithm
 
     [[nodiscard]] common::ErrorCode PiController::prepare_update(
         const PiPreview& preview,
-        const common::Volts limited_output,
-        const bool limited_flag
+        common::Volts limited_output,
+        bool limit_flag,
+        common::Volts& next_integral_out
     ) const noexcept
     {
         const PiPreview& predata = preview;
-        const float integral_pre = integral_output_;
+        const common::Volts integral_pre = integral_output_;
         common::Volts result {0.0F};
         bool integral_worsens_saturation {false};
         bool integral_enable {true};
@@ -103,7 +100,7 @@ namespace robot_foc::algorithm
         {
             return common::ErrorCode::ErrorInvalidParam;
         }
-        if (limited_flag == true)
+        if (limit_flag == true)
         {
             // 若是电压进行过限幅，进行积分饱和判断。积分饱和则不允许继续积分
             integral_worsens_saturation = (((predata.request_output_ > limited_output) && (predata.error_ > 0.0F))
@@ -130,26 +127,7 @@ namespace robot_foc::algorithm
         {
             return common::ErrorCode::ErrorInvalidParam;
         }
-        integral_output_ = result;
-        return common::ErrorCode::Ok;
-    }
-
-    [[nodiscard]] common::ErrorCode PiController::update_after_limit(
-        const PiPreview& preview,
-        const common::Volts limited_output,
-        const bool limit_flag
-    ) noexcept
-    {
-        const common::ErrorCode prepare_result = prepare_update(
-            preview,
-            limited_output,
-            limit_flag,
-        );
-        if (prepare_result != common::ErrorCode::Ok)
-        {
-            return prepare_result;
-        }
-        commit(nextstate);
+        next_integral_out = result;
         return common::ErrorCode::Ok;
     }
 

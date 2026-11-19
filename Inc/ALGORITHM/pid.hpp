@@ -1,32 +1,16 @@
 /**
  * @file pid.hpp
- * @brief Pid算法定义。提供三种Pid算法：电流环Pi、位置式Pid、增量式Pid
+ * @brief 电流环PI、位置式PID和增量式PID控制算法接口。
  * @details
- *  用途： 通用PID控制算法，用于闭环控制
- *  特性：
- *      1. 电流环PI PiController
- *          - 输入：设定值setpoint，反馈值feedback
- *          - 参数：kp，ki
- *          - 功能：完整积分项，支持积分限幅，reset()清零积分与历史误差状态
- *      2. 位置式PID PositionalPid
- *          - 输入：设定值setpoint，反馈值feedback
- *          - 参数：kp，ki，kd
- *          - 功能：完整积分项，支持积分限幅、输出限幅，reset()清零积分与历史误差状态
- *      3. 增量式PID IncrementalPid
- *          - 输入：设定值setpoint，反馈值feedback
- *          - 参数：kp，ki，kd
- *          - 功能：输出控制增量Δu，支持增量限幅，reset()清零连续3次历史误差
- * @note
- *  公共约束：
- *      1. 全部使用float浮点数运算
- *      2. 纯数学算法，无硬件、RTOS依赖，仅依赖COMMON基础类型
- *      3. 两个独立类，互不耦合
- *      4. 调用约定：每次calculate()调用间隔必须为固定采样周期
+ * 本文件提供三个互相独立的纯算法控制器，不依赖硬件或RTOS：
+ * - PiController：面向FOC电流环，采用preview/prepare_update/commit两阶段状态更新；
+ * - PositionalPid：输出绝对控制量，支持输出限幅和积分限幅；
+ * - IncrementalPid：输出控制增量，保存最近三次误差。
  *
- * @warning
- *  位置式PID：输出为绝对控制量，一旦计算出错，直接满量程输出，冲击大
- *  增量式PID：输出为控制量的变化量，只保存最近3次误差，计算出错扰动很小，安全性高
- *          执行器必须自带位置保持，长期运行有缓慢漂移
+ * PiController的prepare_update()和commit()为受限接口，只允许CurrentLoop编排器
+ * 以及单元测试访问器调用。这样可以先完成d/q双轴候选状态计算，再统一提交，避免半更新。
+ * @note 全部算法使用float运算，关闭异常时仍可使用；错误通过ErrorCode返回。
+ * @warning 调用者必须保证控制器的实际调用周期与配置或调参时采用的采样周期一致。
  */
 
 #ifndef ROBOT_FOC_ALGORITHM_PID_HPP
@@ -34,6 +18,11 @@
 
 #include "units.hpp"
 #include "error_code.hpp"
+
+namespace robot_foc::test
+{
+    class PiControllerTestAccess;
+}
 
 namespace robot_foc::algorithm
 {
@@ -65,23 +54,22 @@ namespace robot_foc::algorithm
         common::Volts request_output_ {0.0F};
     };
     
-    /**
-     * @brief PI下周期内容
-     * @var integral_out_ 更新后的积分缓存
-     */
-    struct PiNextState
-    {
-        common::Volts integral_out_ {0.0F};
-    };
-    
     class CurrentLoop;
+
     /**
-     * @brief PI控制器(适配电流环控制)
+     * @brief 适用于FOC电流环的分步式PI控制器。
+     * @details
+     * preview()只计算本周期请求电压，不修改积分状态；prepare_update()依据实际限幅结果
+     * 生成下一积分候选值；commit()在所有相关计算均成功后提交候选值。
+     *
+     * 正常调用顺序：configure() → preview() → 外部矢量限幅 →
+     * prepare_update() → commit()。CurrentLoop负责组织后两个私有步骤。
      */
     class PiController final
     {
     private:
         friend class CurrentLoop;
+        friend class robot_foc::test::PiControllerTestAccess;
 
         // PI控制器基础配置
         PiConfig piconfig_ {};
@@ -93,20 +81,31 @@ namespace robot_foc::algorithm
         float ki_step_ {0.0F};
         /**
          * @brief 根据限幅结果准备PI下一周期状态
-         * @details 仅生成候选状态，不修改内部积分；供CurrentLoop执行双轴事务更新。
+         * @details
+         * 使用条件积分冻结策略计算下一积分贡献。函数只写入next_integral_out，
+         * 不修改控制器内部状态；失败时next_integral_out保持不变。
+         * @param[in] preview 本周期preview()输出的数据
+         * @param[in] limited_output 本周期执行器实际采用的限幅后电压
+         * @param[in] limit_flag 本周期是否发生矢量限幅
+         * @param[out] next_integral_out 下一周期积分输出贡献
+         * @retval common::ErrorCode::Ok 候选状态计算成功
+         * @retval common::ErrorCode::ErrorNotReady 控制器尚未配置
+         * @retval common::ErrorCode::ErrorInvalidParam 输入包含NaN/Inf或计算结果非法
          */
         [[nodiscard]] common::ErrorCode prepare_update(
             const PiPreview& preview,
             common::Volts limited_output,
             bool limit_flag,
-            PiNextState& next_state_out
+            common::Volts& next_integral_out
         ) const noexcept;
 
         /**
          * @brief 提交并固化PI下一周期状态
-         * @details 仅接受有限且位于积分上下限内的候选状态。
+         * @param[in] next_integral 已由prepare_update()校验的下一积分输出贡献
+         * @pre next_integral必须来自同一PiController最近一次成功的prepare_update()调用。
+         * @note 本函数为受信任的内部提交原语，不重复执行参数校验。
          */
-        void commit(const PiNextState& next_state) noexcept;
+        void commit(common::Volts next_integral) noexcept;
 
     public:
         PiController() noexcept = default;
@@ -119,13 +118,14 @@ namespace robot_foc::algorithm
         PiController& operator=(PiController&&) = delete;
         
         /**
-         * @brief 预计算本周期PI原始控制输出（未限幅）
-         * @details 根据电流设定值与反馈值，计算误差、比例项、原始积分项，
-         * @param[in] setpoint DQ轴电流目标设定值
-         * @param[in] feedback DQ轴电流采样反馈值
-         * @param[out] preview_out PI预计算结果（原始未限幅电压、误差）
-         * @retval ErrorCode::Ok 预计算正常完成
-         * @retval 其他错误码：输入参数非法
+         * @brief 计算本周期未限幅的PI请求电压。
+         * @details 请求电压等于比例输出与已提交积分输出之和；本函数不修改内部状态。
+         * @param[in] setpoint 电流目标值，单位A
+         * @param[in] feedback 电流反馈值，单位A
+         * @param[out] preview_out 控制误差和未限幅请求电压；失败时保持不变
+         * @retval common::ErrorCode::Ok 计算成功
+         * @retval common::ErrorCode::ErrorNotReady 控制器尚未配置
+         * @retval common::ErrorCode::ErrorInvalidParam 输入或计算结果包含NaN/Inf
          */
         [[nodiscard]] common::ErrorCode preview(
             const common::Amperes setpoint,
@@ -134,35 +134,17 @@ namespace robot_foc::algorithm
         ) const noexcept;
 
         /**
-         * @brief 根据本周期限幅结果更新PI内部积分状态
-         * @details 内部依次调用prepare_update()和commit()；任一步失败均不修改积分状态。
-         *          单轴独立使用PiController时调用本接口。CurrentLoop可通过友元接口对d/q双轴
-         *          先统一准备、确认全部成功后再统一提交，避免半更新。
-         * @param[in] preview 本周期preview()产生的预计算结果
-         * @param[in] limited_output 本周期经过限幅后的实际输出电压
-         * @param[in] limit_flag 本周期输出是否发生限幅
-         * @retval ErrorCode::Ok 更新成功
-         * @retval ErrorCode::ErrorNotReady 控制器尚未配置
-         * @retval ErrorCode::ErrorInvalidParam 输入或候选状态非法
-         */
-        [[nodiscard]] common::ErrorCode update_after_limit(
-            const PiPreview& preview,
-            common::Volts limited_output,
-            bool limit_flag
-        ) noexcept;
-
-        /**
-         * @brief 设置PI参数并校验配置合法性
-         * @param[in] config PI配置参数（Kp、Ki、积分限幅等）
-         * @retval ErrorCode::Ok 参数合法，配置生效
-         * @retval 其他错误码：参数非法（增益<=0、限幅范围错误等）
+         * @brief 校验并设置PI参数。
+         * @details 配置成功时清零积分状态；配置失败时保留原配置和运行状态。
+         * @param[in] config PI增益、采样周期和积分输出限幅
+         * @retval common::ErrorCode::Ok 配置成功
+         * @retval common::ErrorCode::ErrorInvalidParam 参数非有限、增益小于0、采样周期非正或限幅方向非法
          */
         [[nodiscard]] common::ErrorCode configure(const PiConfig& config) noexcept;
         
         /**
-         * @brief 重置PI运行时状态
-         * @details 清零积分状态；
-         * @note 保留原有configure的增益配置不变
+         * @brief 清零已提交的积分状态。
+         * @note 保留configure()设置的全部参数和已配置状态。
          */
         void reset() noexcept;
     };

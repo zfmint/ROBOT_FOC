@@ -34,8 +34,8 @@ namespace robot_foc::algorithm
     class CurrentLoop final
     {
         private:
-            PiController id_cfg_;
-            PiController iq_cfg_;
+            PiController pi_id_;
+            PiController pi_iq_;
             bool configured_ {false};
         public:
             /**
