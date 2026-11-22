@@ -131,7 +131,7 @@ void test_incremental_pid()
 void test_incremental_pid_closed()
 {
     using robot_foc::algorithm::IncrementalPid;
-    using robot_foc::test::MockFirstOrderPlant;
+    using robot_foc::test::mock::MockFirstOrderPlant;
 
     const float Ts = 0.01F;
     const float tau = 0.2F;
@@ -149,7 +149,7 @@ void test_incremental_pid_closed()
         out_min,
         out_max
     };
-    robot_foc::test::MockFirstOrderPlant plant(Ts,tau);
+    robot_foc::test::mock::MockFirstOrderPlant plant(Ts,tau);
 
     pid.reset();
     plant.reset();
@@ -211,10 +211,10 @@ void test_incremental_pid_closed()
     // 超调校验：峰值不超过设定值*(1+超调比例)，加浮点容差
     const float peak_max_allowed = set * (1.0F + max_overshoot_ratio);
     ROBOT_FOC_TEST_EXPECT(fb_max <= peak_max_allowed + 1e-6F, "inc closed step response: overshoot is controlled");
-
+    /*
     std::cout << "\n[Incremental Closed Step] set=" << set
               << " | peak_fb=" << fb_max
               << " | final_fb=" << fb
               << " | allowed_peak=" << peak_max_allowed << "\n";
-
+    */
 }

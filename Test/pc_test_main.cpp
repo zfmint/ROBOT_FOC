@@ -97,6 +97,6 @@ int main(int argc, char* argv[])
         return EXIT_FAILURE;
     }
 
-    std::cout << "\n✅ All tests passed.\n";
+    std::cout << "\n All tests passed.\n";
     return EXIT_SUCCESS;
 }

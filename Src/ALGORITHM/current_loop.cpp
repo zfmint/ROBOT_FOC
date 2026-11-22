@@ -6,8 +6,8 @@
  * 1. preview：Id/Iq预计算原始Vd/Vq
  * 2. inverse_park → VoltageLimiter矢量限幅 → park回dq
  * 3. prepare_update 根据限幅状态计算下一积分状态
- * 4. commit 固化PI积分
- * 5. 逆Park后电压送入SVPWM输出占空比
+ * 4. 限幅后αβ电压送入SVPWM计算占空比
+ * 5. 全部计算成功后commit固化PI积分并提交占空比
  */
 #include "ALGORITHM/current_loop.hpp"
 
@@ -52,13 +52,15 @@ namespace robot_foc::algorithm
     ) noexcept
     {
         const CurrentLoopInput& input = current_input;
-        common::DQVoltage volt_piout;
-        common::AlphaBetaVoltage volt_inversepark;
-        common::DQVoltage volt_parkout;
-        common::Volts id_next, iq_next;
-        VoltageLimitOut limit_result;
-        SvpwmDuty result;
-        PiPreview id_pre, iq_pre;
+        common::DQVoltage volt_piout {};
+        common::AlphaBetaVoltage volt_inversepark {};
+        common::DQVoltage volt_parkout {};
+        common::Volts id_next {0.0F};
+        common::Volts iq_next {0.0F};
+        VoltageLimitOut limit_result {};
+        SvpwmDuty result {};
+        PiPreview id_pre {};
+        PiPreview iq_pre {};
         if (!configured_)
         {
             return common::ErrorCode::ErrorNotReady;
@@ -72,7 +74,7 @@ namespace robot_foc::algorithm
         {
             return ret_id;
         }
-        volt_piout.d_volt_= id_pre.request_output_;
+        volt_piout.d_volt_ = id_pre.request_output_;
         auto ret_iq = pi_iq_.PiController::preview(
             input.current_reference_.q_current_,
             input.current_feedback_.q_current_,
@@ -92,7 +94,11 @@ namespace robot_foc::algorithm
         {
             return ret_inversepark;
         }
-        auto ret_limit = VoltageLimit::hexagon_limit(volt_inversepark,input.v_bus_,limit_result);
+        auto ret_limit = VoltageLimit::hexagon_limit(
+            volt_inversepark,
+            input.v_bus_,
+            limit_result
+        );
         if (ret_limit != common::ErrorCode::Ok)
         {
             return ret_limit;

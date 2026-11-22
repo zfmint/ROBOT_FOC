@@ -265,8 +265,8 @@ void test_encoder_speed_closed()
     using robot_foc::algorithm::EncoderSpeedEstimator;
     using robot_foc::algorithm::EncoderSpeedSample;
     using robot_foc::common::ErrorCode;
-    using robot_foc::test::MockEncoderCounter;
-    using robot_foc::test::MockFirstOrderPlant;
+    using robot_foc::test::mock::MockEncoderCounter;
+    using robot_foc::test::mock::MockFirstOrderPlant;
 
     constexpr float kSamplePeriod{0.001F};
     constexpr float kPlantTimeConstant{0.02F};

@@ -24,19 +24,19 @@
 
 #include <cstdint>
 
-namespace robot_foc::test
+namespace robot_foc::test::mock
 {
     class MockEncoderCounter
     {
     private:
         // 倍频后每转总脉冲数
-        std::uint32_t ppr_{0U};
+        std::uint32_t ppr_ {0U};
         // 定时器计数寄存器位宽
-        std::uint8_t  bits_{16U};
+        std::uint8_t  bits_ {16U};
         // 计数器满量程最大值：（1 << bits_）-1
-        std::uint32_t wrap_max_{0U};
+        std::uint32_t wrap_max_ {0U};
         // 上一时刻浮点计数值，用于平滑连续位置推演
-        float last_float_count_{0.0F};
+        float last_float_count_ {0.0F};
         
     public:
         /**
@@ -64,6 +64,6 @@ namespace robot_foc::test
          */
         void reset() noexcept;
     };
-} // namespace robot_foc::test
+} // namespace robot_foc::test::mock
 
 #endif

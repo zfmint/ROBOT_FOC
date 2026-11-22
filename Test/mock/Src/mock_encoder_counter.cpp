@@ -17,7 +17,7 @@
 #include <cstdlib>
 #include <limits>
 
-namespace robot_foc::test
+namespace robot_foc::test::mock
 {
     MockEncoderCounter::MockEncoderCounter(std::uint32_t pulses_per_revolution, std::uint8_t counter_bits) noexcept
         : ppr_{pulses_per_revolution}
@@ -70,5 +70,4 @@ namespace robot_foc::test
     {
         last_float_count_ = 0.0F;
     }
-} // namespace robot_foc::test
-
+} // namespace robot_foc::test::mock

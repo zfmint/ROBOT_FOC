@@ -104,9 +104,9 @@ endif()
 if(NOT CMAKE_CROSSCOMPILING)
     add_library(robot_test_utils STATIC
         # 一阶惯性仿真模型
-        Test/Src/mock_plant.cpp
+        Test/mock/Src/mock_plant.cpp
         # 测速编码器仿真模型
-        Test/Src/mock_encoder_counter.cpp
+        Test/mock/Src/mock_encoder_counter.cpp
         # 新增仿真模型放在这里
     )
 
@@ -127,11 +127,10 @@ if(NOT CMAKE_CROSSCOMPILING)
         )
     endif()
 
-    # 头文件规则：
-    # PRIVATE：测试工具库内部使用Test/Inc，不向依赖目标传播测试头文件路径
+    # robot_test_utils内部读取mock头文件，PRIVATE不向外传播
     target_include_directories(robot_test_utils
         PRIVATE
-            ${PROJECT_SOURCE_DIR}/Test/Inc
+            ${PROJECT_SOURCE_DIR}/Test/mock/Inc
     )
 
     # 测试工具库依赖核心业务库
@@ -148,7 +147,7 @@ endif()
 #  依赖robot_hal_core + robot_hal_mock，加载HAL抽象层与Mock模拟驱动用于单元验证。
 # @note
 #  PRIVATE头文件路径仅作用于当前测试目标，不会向外传递到其它依赖目标；
-#  生产代码无法访问Test/Inc下测试专用头文件，实现测试与业务代码隔离。
+#  生产代码无法访问Test下测试专用头文件，实现测试与业务代码隔离。
 ##############################################################################
 if(NOT CMAKE_CROSSCOMPILING)
     add_executable(pc_unit_test
@@ -192,10 +191,11 @@ if(NOT CMAKE_CROSSCOMPILING)
             robot_test_utils
     )
 
-    # 测试头文件仅对PC测试程序可见，不传播给生产目标
+    # pc_unit_test 需要同时访问：Test/Inc(test_helper.hpp) 和 Test/mock/Inc(mock_plant.hpp)
     target_include_directories(pc_unit_test
         PRIVATE
             ${PROJECT_SOURCE_DIR}/Test/Inc
+            ${PROJECT_SOURCE_DIR}/Test/mock/Inc
     )
 
     ## @brief 设置可执行产物输出目录

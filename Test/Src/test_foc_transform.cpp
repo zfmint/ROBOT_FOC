@@ -17,9 +17,6 @@
  *  - 浮点数比较使用容忍阈值 kEps，避免浮点误差导致误报失败
  *  - 全部为无状态纯数学变换，无需复位
  */
-#include <cstring>
-#include <cstdio>
-
 #include "ALGORITHM/foc_transform.hpp"
 #include "test_helper.hpp"
 
@@ -132,8 +129,8 @@ void test_foc_transform()
         auto ret_2 = nearly_equal(AlphaBetacurr_2.beta_current_, AlphaBetacurr_1.beta_current_);
         ROBOT_FOC_TEST_EXPECT(ret_1 && ret_2, "alpha beta restore ok");
 
-        std::cout << "alpha1:" << AlphaBetacurr_1.alpha_current_ << " alpha2:" << AlphaBetacurr_2.alpha_current_ << "\n";
-        std::cout << "beta1:" << AlphaBetacurr_1.beta_current_ << " beta2:" << AlphaBetacurr_2.beta_current_ << "\n";
+        // std::cout << "alpha1:" << AlphaBetacurr_1.alpha_current_ << " alpha2:" << AlphaBetacurr_2.alpha_current_ << "\n";
+        // std::cout << "beta1:" << AlphaBetacurr_1.beta_current_ << " beta2:" << AlphaBetacurr_2.beta_current_ << "\n";
 
         auto r_invclarke = FocTransform::inverse_clarke(AlphaBetacurr_2, ABCcurr_2);
         ROBOT_FOC_TEST_EXPECT(r_invclarke == ErrorCode::Ok, "inv clarke in chain ok");
@@ -142,9 +139,9 @@ void test_foc_transform()
         auto ret_5 = nearly_equal(ABCcurr_2.b_current_, ABCcurr_1.b_current_);
         auto ret_6 = nearly_equal(ABCcurr_2.c_current_, ABCcurr_1.c_current_);
 
-        std::cout << ABCcurr_2.a_current_ << " " << ret_4 << "\n";
-        std::cout << ABCcurr_2.b_current_ << " " << ret_5 << "\n";
-        std::cout << ABCcurr_2.c_current_ << " " << ret_6 << "\n";
+        // std::cout << ABCcurr_2.a_current_ << " " << ret_4 << "\n";
+        // std::cout << ABCcurr_2.b_current_ << " " << ret_5 << "\n";
+        // std::cout << ABCcurr_2.c_current_ << " " << ret_6 << "\n";
 
         ROBOT_FOC_TEST_EXPECT(ret_4 && ret_5 && ret_6, "full chain restore ABC ok");
     }

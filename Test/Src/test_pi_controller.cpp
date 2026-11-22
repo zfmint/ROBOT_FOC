@@ -398,7 +398,7 @@ void test_pi_controller_closed()
     using robot_foc::common::ErrorCode;
     using robot_foc::common::Seconds;
     using robot_foc::common::Volts;
-    using robot_foc::test::MockFirstOrderPlant;
+    using robot_foc::test::mock::MockFirstOrderPlant;
     using robot_foc::test::PiControllerTestAccess;
 
     constexpr Seconds kSampleTime {0.01F};
@@ -472,9 +472,10 @@ void test_pi_controller_closed()
         peak_feedback <= maximum_peak,
         "pi closed-loop overshoot within tolerance"
     );
-
+    /*
     std::cout << "\n[PiController Closed Step] set=" << kSetpoint
               << " | peak_fb=" << peak_feedback
               << " | final_fb=" << feedback
               << " | allowed_peak=" << maximum_peak << '\n';
+    */
 }

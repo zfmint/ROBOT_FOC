@@ -15,7 +15,7 @@
 #include "error_code.hpp"
 #include "control_type.hpp"
 
-namespace robot_foc::test
+namespace robot_foc::test::mock
 {
     /**
      * @brief SISO 单输入单输出一阶惯性离散模型
@@ -26,9 +26,9 @@ namespace robot_foc::test
     class MockFirstOrderPlant
     {
     private:
-        float y_{0.0F}; ///< 对象当前输出状态
-        float ts_{0.0F}; ///< 采样周期，单位：秒
-        float tau_{0.0F}; ///< 惯性时间常数，单位：秒，必须大于0
+        float y_ {0.0F}; ///< 对象当前输出状态
+        float ts_ {0.0F}; ///< 采样周期，单位：秒
+        float tau_ {0.0F}; ///< 惯性时间常数，单位：秒，必须大于0
 
     public:
         /**
@@ -76,7 +76,6 @@ namespace robot_foc::test
     private:
         MockFirstOrderPlant plant_alpha_; ///< α轴
         MockFirstOrderPlant plant_beta_; ///< β轴
-        common::AlphaBetaVoltage AlphaBetaVolts {}; ///< 当前输出状态
     public:
         /**
          * @brief 构造函数，指定采样周期与惯性时间常数
@@ -102,7 +101,7 @@ namespace robot_foc::test
          * @param[in] volts_input PID输出的控制量
          * @return 更新后的被控对象输出
          */
-        [[nodiscard]] common::ErrorCode update(common::AlphaBetaVoltage volts_input) noexcept;
+        [[nodiscard]] common::AlphaBetaCurrent update(const common::AlphaBetaVoltage& volts_input) noexcept;
 
         /**
          * @brief 重置对象内部状态，输出y清零
@@ -110,6 +109,6 @@ namespace robot_foc::test
         void reset() noexcept;
 
     };
-} // namespace robot_foc::test
+} // namespace robot_foc::test::mock
 
 #endif // ROBOT_FOC_TEST_MOCK_PLANT_HPP
