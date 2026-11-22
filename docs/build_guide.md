@@ -62,7 +62,7 @@
  - 作用域\
  一阶惯性模型等仅供 PC 算法测试使用的仿真组件
  - 配置项\
- 源文件：`Test/Src/mock_plant.cpp`；头文件目录 `Test/Inc` 仅对该目标私有可见
+ 源文件：`Test/mock/Src/mock_plant.cpp`；头文件目录 `Test/Inc` 仅对该目标私有可见
  - 约束条件\
  仅在非交叉编译时构建，不进入生产固件
 4. `pc_unit_test`（PC 单元测试可执行程序）
