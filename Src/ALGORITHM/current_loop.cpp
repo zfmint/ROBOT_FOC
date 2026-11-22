@@ -141,4 +141,4 @@ namespace robot_foc::algorithm
         return common::ErrorCode::Ok;
     }
 
-} // namespace robot::foc::algorithm
+} // namespace robot_foc::algorithm

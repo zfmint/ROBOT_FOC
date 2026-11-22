@@ -52,8 +52,8 @@ namespace robot_foc::algorithm
 
             /**
              * @brief 执行完整电流环计算链路
-             * @param input 参考电流、反馈电流、电角度、母线电压
-             * @param duty_out 输出三相SVPWM占空比
+             * @param current_input 参考电流、反馈电流、电角度、母线电压
+             * @param duty_output 输出三相SVPWM占空比
              * @retval Ok 正常完成计算
              * @retval ErrorNotReady 未完成configure配置
              * @retval ErrorInvalidParam 输入存在NaN/Inf非法数值

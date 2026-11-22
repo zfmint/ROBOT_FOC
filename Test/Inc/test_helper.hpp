@@ -5,7 +5,8 @@
  *  提供两组断言宏：ROBOT_FOC_TEST_EXPECT / ROBOT_FOC_TEST_ASSERT。
  *  - ROBOT_FOC_TEST_EXPECT：断言失败仅增加失败计数，继续执行本测试函数剩余代码。
  *  - ROBOT_FOC_TEST_ASSERT：断言失败计数+1，并立即return退出当前测试函数。
- *  全局维护失败计数器 test_failure_count，支持多测试源文件共同统计。
+ *  全局维护失败计数器 test_failure_count、成功计数器 test_success_count，支持多测试源文件共同统计。
+ *  输出模式：默认仅打印失败；设置test_verbose=true开启verbose，同时打印PASS/FAIL。
  *  仅用于PC单元测试，**不编译进MCU固件**。
  * @author Robot_FOC Project
  * @note
@@ -13,7 +14,6 @@
  *  2. 断言第二个参数必须传入字符串字面量，作为用例名称。
  *  3. inline全局变量，解决多文件include造成重复定义链接错误。
  */
-
 #ifndef ROBOT_FOC_TEST_TEST_HELPER_HPP
 #define ROBOT_FOC_TEST_TEST_HELPER_HPP
 
@@ -22,8 +22,12 @@
 #include <cstdlib>
 #include <iostream>
 
-// 全局测试失败计数，inline保证多文件包含不重复定义
+// 全局测试计数，inline保证多文件包含不重复定义
 inline std::size_t test_failure_count{0U};
+inline std::size_t test_success_count{0U};
+/// verbose输出开关：true=打印PASS+FAIL；false=只打印FAIL(默认)
+inline bool test_verbose{false};
+
 // 全局浮点数大小判断范围
 inline constexpr float kTolerance{1.0e-4F};
 
@@ -57,7 +61,12 @@ inline void expect_impl(
         std::cerr << "[FAIL] " << case_name << " | " << file << ':' << line << '\n';
         return;
     }
-    std::cout << "[PASS] " << case_name << '\n';
+    ++test_success_count;
+    // verbose开启才打印PASS信息
+    if(test_verbose)
+    {
+        std::cout << "[PASS] " << case_name << '\n';
+    }
 }
 
 /**
@@ -87,6 +96,10 @@ inline void expect_impl(
             expect_impl(false, (case_name), __FILE__, __LINE__); \
             return;                               \
         }                                         \
+        else                                      \
+        {                                         \
+            expect_impl(true, (case_name), __FILE__, __LINE__); \
+        }                                         \
     } while (false)
-
+    
 #endif // ROBOT_FOC_TEST_TEST_HELPER_HPP

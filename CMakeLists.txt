@@ -40,6 +40,7 @@ add_library(robot_hal_core STATIC
     Src/ALGORITHM/foc_transform.cpp
     Src/ALGORITHM/voltage_limit.cpp
     Src/ALGORITHM/svpwm.cpp
+    Src/ALGORITHM/current_loop.cpp
 )
 
 ## robot_hal_core编译选项：生产库关闭异常、RTTI，适配STM32嵌入式
@@ -179,6 +180,8 @@ if(NOT CMAKE_CROSSCOMPILING)
         Test/Src/test_voltage_limit.cpp
         # SVPWM单元测试
         Test/Src/test_svpwm.cpp
+        # 电流环单元测试
+        Test/Src/test_current_loop.cpp
     )
 
     ## @brief 链接核心库 + mock仿真库
