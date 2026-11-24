@@ -28,9 +28,9 @@ namespace robot_foc::algorithm
             if (std::isfinite(ki_time))
             {
                 piconfig_ = cfg;
-                integral_output_ = 0.0F;
                 configured_ = true;
                 ki_step_ = ki_time;
+                reset();
                 return common::ErrorCode::Ok;
             }    
         }
@@ -40,20 +40,27 @@ namespace robot_foc::algorithm
     void PiController::reset() noexcept
     {
         integral_output_ = 0.0F;
+        ++revision_;
     }
 
-    void PiController::commit(common::Volts next_integral) noexcept
+    [[nodiscard]] float PiController::PiPreview::get_request_output() const noexcept
+    {
+        return request_output_;
+    }
+
+    void PiController::commit(float next_integral) noexcept
     {
         integral_output_ = next_integral;
     }
 
     [[nodiscard]] common::ErrorCode PiController::preview(
-        const common::Amperes setpoint,
-        const common::Amperes feedback,
+        const float setpoint,
+        const float feedback,
         PiPreview& preview_out
     ) const noexcept
     {
-        common::Volts voltage {0.0F};
+        preview_out.owner_ = nullptr;
+        float result {0.0F};
         PiPreview out;
         float p {0.0F};
         float error {0.0F};
@@ -61,15 +68,22 @@ namespace robot_foc::algorithm
         {
             return common::ErrorCode::ErrorNotReady;
         }
-        if (std::isfinite(setpoint)&&std::isfinite(feedback))
+        if ((std::isfinite(setpoint))
+         && (std::isfinite(feedback))
+        )
         {
             error = setpoint - feedback;
             p = piconfig_.kp_ * error;
-            voltage = p + integral_output_;
-            if (std::isfinite(error)&&std::isfinite(voltage))
+            result = p + integral_output_;
+            if ((std::isfinite(error))
+             && (std::isfinite(p))
+             && (std::isfinite(result))
+            )
             {
+                out.owner_ = this;
+                out.revision_ = revision_;
                 out.error_ = error;
-                out.request_output_ = voltage;
+                out.request_output_ = result;
                 preview_out = out;
                 return common::ErrorCode::Ok;
             }
@@ -79,55 +93,63 @@ namespace robot_foc::algorithm
 
     [[nodiscard]] common::ErrorCode PiController::prepare_update(
         const PiPreview& preview,
-        common::Volts limited_output,
+        float limited_output,
         bool limit_flag,
-        common::Volts& next_integral_out
+        PreparedState& next_state
     ) const noexcept
     {
-        const PiPreview& predata = preview;
-        const common::Volts integral_pre = integral_output_;
-        common::Volts result {0.0F};
+        next_state.owner_ = nullptr;
+        const float integral_pre = integral_output_;
+        PreparedState result {};
         bool integral_worsens_saturation {false};
         bool integral_enable {true};
         if (!configured_)
         {
             return common::ErrorCode::ErrorNotReady;
         }
-        if ((!std::isfinite(predata.request_output_))
-         || (!std::isfinite(predata.error_))
+        if ((!std::isfinite(preview.request_output_))
+         || (!std::isfinite(preview.error_))
          || (!std::isfinite(limited_output))
         )
         {
             return common::ErrorCode::ErrorInvalidParam;
         }
+        if ((preview.owner_!= this)
+         || (preview.revision_ != revision_)
+        )
+        {
+            return common::ErrorCode::ErrorUnsupported;
+        }
         if (limit_flag == true)
         {
             // 若是电压进行过限幅，进行积分饱和判断。积分饱和则不允许继续积分
-            integral_worsens_saturation = (((predata.request_output_ > limited_output) && (predata.error_ > 0.0F))
-                                       || (((predata.request_output_ < limited_output) && (predata.error_ < 0.0F))));
+            integral_worsens_saturation = (((preview.request_output_ > limited_output) && (preview.error_ > 0.0F))
+                                       || (((preview.request_output_ < limited_output) && (preview.error_ < 0.0F))));
             integral_enable = !integral_worsens_saturation;
         }
         if (integral_enable == true)
         {
-            result = integral_pre + ki_step_ * predata.error_;
+            result.next_integral_ = integral_pre + ki_step_ * preview.error_;
         }
         else
         {
-            result = integral_pre;
+            result.next_integral_ = integral_pre;
         }
-        if (result < piconfig_.integral_min_)
-        {
-            result = piconfig_.integral_min_;
-        }
-        else if (result > piconfig_.integral_max_)
-        {
-            result = piconfig_.integral_max_;
-        }
-        if (!std::isfinite(result))
+        if (!std::isfinite(result.next_integral_))
         {
             return common::ErrorCode::ErrorInvalidParam;
         }
-        next_integral_out = result;
+        if (result.next_integral_ < piconfig_.integral_min_)
+        {
+            result.next_integral_ = piconfig_.integral_min_;
+        }
+        else if (result.next_integral_ > piconfig_.integral_max_)
+        {
+            result.next_integral_ = piconfig_.integral_max_;
+        }
+        result.owner_ = this;
+        result.revision_ = revision_;
+        next_state = result;
         return common::ErrorCode::Ok;
     }
 
