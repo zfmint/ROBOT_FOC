@@ -1,73 +1,33 @@
 /**
  * @file test_pi_controller.cpp
- * @brief PiController分步计算、抗积分饱和和闭环响应单元测试。
- * @details
- * PiController的prepare_update()和commit()仅供CurrentLoop使用。测试通过无状态、
- * 无运行时开销的PiControllerTestAccess访问器验证同一条内部调用路径，不扩大生产接口。
+ * @brief 分步式PI控制器单元测试。
+ * @details 验证配置校验、两阶段更新、抗积分饱和、状态版本校验、
+ * 双控制器成对提交及闭环阶跃响应。
  */
 
+#include <algorithm>
 #include <cmath>
 #include <cstddef>
-#include <iostream>
+#include <limits>
 
 #include "ALGORITHM/pid.hpp"
 #include "mock_plant.hpp"
 #include "test_helper.hpp"
 
-namespace robot_foc::test
-{
-    /**
-     * @brief PiController私有两阶段更新接口的单元测试访问器。
-     * @note 仅转发调用，不保存状态，不参与生产运行。
-     */
-    class PiControllerTestAccess final
-    {
-    public:
-        PiControllerTestAccess() = delete;
-
-        [[nodiscard]] static common::ErrorCode prepare_update(
-            const algorithm::PiController& controller,
-            const algorithm::PiPreview& preview,
-            common::Volts limited_output,
-            bool limit_flag,
-            common::Volts& next_integral_out
-        ) noexcept
-        {
-            return controller.prepare_update(
-                preview,
-                limited_output,
-                limit_flag,
-                next_integral_out
-            );
-        }
-
-        static void commit(
-            algorithm::PiController& controller,
-            common::Volts next_integral
-        ) noexcept
-        {
-            controller.commit(next_integral);
-        }
-    };
-} // namespace robot_foc::test
-
 namespace
 {
     using robot_foc::algorithm::PiConfig;
     using robot_foc::algorithm::PiController;
-    using robot_foc::algorithm::PiPreview;
-    using robot_foc::common::Amperes;
     using robot_foc::common::ErrorCode;
-    using robot_foc::common::Seconds;
-    using robot_foc::common::Volts;
-    using robot_foc::test::PiControllerTestAccess;
+    using PiPreview = PiController::PiPreview;
+    using PreparedState = PiController::PreparedState;
 
     [[nodiscard]] PiConfig make_config(
         float kp,
         float ki,
-        Seconds sample_time,
-        Volts integral_min,
-        Volts integral_max
+        float sample_time,
+        float integral_min,
+        float integral_max
     ) noexcept
     {
         PiConfig config {};
@@ -78,311 +38,608 @@ namespace
         config.integral_max_ = integral_max;
         return config;
     }
-
-    [[nodiscard]] ErrorCode prepare_and_commit(
-        PiController& controller,
-        const PiPreview& preview,
-        Volts limited_output,
-        bool limit_flag
-    ) noexcept
-    {
-        Volts next_integral {0.0F};
-        const ErrorCode result = PiControllerTestAccess::prepare_update(
-            controller,
-            preview,
-            limited_output,
-            limit_flag,
-            next_integral
-        );
-        if (result == ErrorCode::Ok)
-        {
-            PiControllerTestAccess::commit(controller, next_integral);
-        }
-        return result;
-    }
 } // namespace
 
 /**
- * @brief 验证PiController配置、两阶段更新、抗饱和和错误处理。
+ * @brief 验证PiController配置、分步更新、抗饱和和状态有效性。
  */
 void test_pi_controller()
 {
-    // 测试1：未配置保护，失败时输出参数保持不变。
+    // 测试1：未配置保护和配置参数校验。
     {
         PiController controller {};
         PiPreview preview {};
-        preview.error_ = Amperes{7.0F};
-        preview.request_output_ = Volts{8.0F};
+        PreparedState state {};
 
-        const ErrorCode preview_result = controller.preview(
-            Amperes{1.0F},
-            Amperes{0.0F},
-            preview
+        ROBOT_FOC_TEST_EXPECT(
+            controller.preview(1.0F, 0.0F, preview) == ErrorCode::ErrorNotReady,
+            "pi preview before configure rejected"
         );
-        ROBOT_FOC_TEST_EXPECT(preview_result == ErrorCode::ErrorNotReady, "pi preview before configure rejected");
-        ROBOT_FOC_TEST_EXPECT(nearly_equal(preview.error_, 7.0F), "pi failed preview preserves error output");
-        ROBOT_FOC_TEST_EXPECT(nearly_equal(preview.request_output_, 8.0F), "pi failed preview preserves voltage output");
+        ROBOT_FOC_TEST_EXPECT(
+            controller.prepare_update(preview, 0.0F, false, state)
+                == ErrorCode::ErrorNotReady,
+            "pi prepare before configure rejected"
+        );
+        ROBOT_FOC_TEST_EXPECT(
+            controller.commit(state) == ErrorCode::ErrorNotReady,
+            "pi commit before configure rejected"
+        );
 
-        Volts next_integral {9.0F};
-        const ErrorCode prepare_result = PiControllerTestAccess::prepare_update(
-            controller,
-            preview,
-            Volts{0.0F},
-            false,
-            next_integral
+        const PiConfig valid = make_config(1.0F, 100.0F, 0.001F, -20.0F, 20.0F);
+        PiConfig invalid = valid;
+        invalid.kp_ = -1.0F;
+        ROBOT_FOC_TEST_EXPECT(
+            controller.configure(invalid) == ErrorCode::ErrorInvalidParam,
+            "pi negative kp rejected"
         );
-        ROBOT_FOC_TEST_EXPECT(prepare_result == ErrorCode::ErrorNotReady, "pi prepare before configure rejected");
-        ROBOT_FOC_TEST_EXPECT(nearly_equal(next_integral, 9.0F), "pi failed prepare preserves candidate output");
+
+        invalid = valid;
+        invalid.ki_ = -1.0F;
+        ROBOT_FOC_TEST_EXPECT(
+            controller.configure(invalid) == ErrorCode::ErrorInvalidParam,
+            "pi negative ki rejected"
+        );
+
+        invalid = valid;
+        invalid.sample_time_ = 0.0F;
+        ROBOT_FOC_TEST_EXPECT(
+            controller.configure(invalid) == ErrorCode::ErrorInvalidParam,
+            "pi zero sample time rejected"
+        );
+
+        invalid = valid;
+        invalid.integral_min_ = 1.0F;
+        ROBOT_FOC_TEST_EXPECT(
+            controller.configure(invalid) == ErrorCode::ErrorInvalidParam,
+            "pi positive integral minimum rejected"
+        );
+
+        invalid = valid;
+        invalid.integral_max_ = -1.0F;
+        ROBOT_FOC_TEST_EXPECT(
+            controller.configure(invalid) == ErrorCode::ErrorInvalidParam,
+            "pi negative integral maximum rejected"
+        );
+
+        invalid = valid;
+        invalid.kp_ = std::numeric_limits<float>::quiet_NaN();
+        ROBOT_FOC_TEST_EXPECT(
+            controller.configure(invalid) == ErrorCode::ErrorInvalidParam,
+            "pi nonfinite configuration rejected"
+        );
+
+        invalid = valid;
+        invalid.ki_ = std::numeric_limits<float>::max();
+        invalid.sample_time_ = 2.0F;
+        ROBOT_FOC_TEST_EXPECT(
+            controller.configure(invalid) == ErrorCode::ErrorInvalidParam,
+            "pi overflowing discrete gain rejected"
+        );
+
+        ROBOT_FOC_TEST_EXPECT(
+            controller.configure(valid) == ErrorCode::Ok,
+            "pi valid configuration accepted"
+        );
     }
 
-    // 测试2：正常积分采用两阶段提交，prepare不会提前修改内部状态。
+    // 测试2：prepare_update不提前修改积分，commit后候选状态才生效。
     {
         PiController controller {};
-        const PiConfig config = make_config(1.0F, 100.0F, Seconds{0.001F}, Volts{-20.0F}, Volts{20.0F});
-        ROBOT_FOC_TEST_EXPECT(controller.configure(config) == ErrorCode::Ok, "pi valid configure accepted");
+        const PiConfig config = make_config(1.0F, 100.0F, 0.001F, -20.0F, 20.0F);
+        ROBOT_FOC_TEST_ASSERT(
+            controller.configure(config) == ErrorCode::Ok,
+            "pi transaction configure succeeded"
+        );
 
         PiPreview preview {};
-        ROBOT_FOC_TEST_EXPECT(
-            controller.preview(Amperes{2.0F}, Amperes{0.0F}, preview) == ErrorCode::Ok,
-            "pi first preview succeeded"
+        PreparedState state {};
+        ROBOT_FOC_TEST_ASSERT(
+            controller.preview(2.0F, 0.0F, preview) == ErrorCode::Ok,
+            "pi transaction preview succeeded"
         );
-        ROBOT_FOC_TEST_EXPECT(nearly_equal(preview.error_, 2.0F), "pi first preview error correct");
-        ROBOT_FOC_TEST_EXPECT(nearly_equal(preview.request_output_, 2.0F), "pi first preview voltage correct");
-
-        Volts next_integral {99.0F};
         ROBOT_FOC_TEST_EXPECT(
-            PiControllerTestAccess::prepare_update(
-                controller,
-                preview,
-                Volts{2.0F},
-                false,
-                next_integral
-            ) == ErrorCode::Ok,
-            "pi prepare normal update succeeded"
+            nearly_equal(preview.get_request_output(), 2.0F),
+            "pi proportional output correct"
         );
-        ROBOT_FOC_TEST_EXPECT(nearly_equal(next_integral, 0.2F), "pi prepared integral increment correct");
+        ROBOT_FOC_TEST_ASSERT(
+            controller.prepare_update(preview, 2.0F, false, state) == ErrorCode::Ok,
+            "pi transaction prepare succeeded"
+        );
 
         PiPreview before_commit {};
-        ROBOT_FOC_TEST_EXPECT(
-            controller.preview(Amperes{2.0F}, Amperes{0.0F}, before_commit) == ErrorCode::Ok,
+        ROBOT_FOC_TEST_ASSERT(
+            controller.preview(0.0F, 0.0F, before_commit) == ErrorCode::Ok,
             "pi preview before commit succeeded"
         );
-        ROBOT_FOC_TEST_EXPECT(nearly_equal(before_commit.request_output_, 2.0F), "pi prepare does not mutate state");
-
-        PiControllerTestAccess::commit(controller, next_integral);
-        PiPreview after_commit {};
         ROBOT_FOC_TEST_EXPECT(
-            controller.preview(Amperes{2.0F}, Amperes{0.0F}, after_commit) == ErrorCode::Ok,
+            nearly_equal(before_commit.get_request_output(), 0.0F),
+            "pi prepare does not change committed integral"
+        );
+
+        ROBOT_FOC_TEST_ASSERT(
+            controller.commit(state) == ErrorCode::Ok,
+            "pi transaction commit succeeded"
+        );
+
+        PiPreview after_commit {};
+        ROBOT_FOC_TEST_ASSERT(
+            controller.preview(0.0F, 0.0F, after_commit) == ErrorCode::Ok,
             "pi preview after commit succeeded"
         );
-        ROBOT_FOC_TEST_EXPECT(nearly_equal(after_commit.request_output_, 2.2F), "pi commit activates prepared integral");
+        ROBOT_FOC_TEST_EXPECT(
+            nearly_equal(after_commit.get_request_output(), 0.2F),
+            "pi committed integral increment correct"
+        );
+        ROBOT_FOC_TEST_EXPECT(
+            controller.commit(state) == ErrorCode::ErrorUnsupported,
+            "pi repeated commit rejected"
+        );
+        ROBOT_FOC_TEST_EXPECT(
+            controller.prepare_update(preview, 2.0F, false, state)
+                == ErrorCode::ErrorUnsupported,
+            "pi old preview rejected after commit"
+        );
     }
 
-    // 测试3：正向和负向饱和时，误差继续加剧饱和则冻结积分。
-    {
-        PiController positive {};
-        PiController negative {};
-        const PiConfig config = make_config(1.0F, 100.0F, Seconds{0.001F}, Volts{-20.0F}, Volts{20.0F});
-        ROBOT_FOC_TEST_EXPECT(positive.configure(config) == ErrorCode::Ok, "pi positive anti-windup configured");
-        ROBOT_FOC_TEST_EXPECT(negative.configure(config) == ErrorCode::Ok, "pi negative anti-windup configured");
-
-        PiPreview positive_preview {};
-        ROBOT_FOC_TEST_EXPECT(
-            positive.preview(Amperes{5.0F}, Amperes{0.0F}, positive_preview) == ErrorCode::Ok,
-            "pi positive anti-windup preview succeeded"
-        );
-        Volts positive_next {99.0F};
-        ROBOT_FOC_TEST_EXPECT(
-            PiControllerTestAccess::prepare_update(
-                positive,
-                positive_preview,
-                Volts{3.0F},
-                true,
-                positive_next
-            ) == ErrorCode::Ok,
-            "pi positive anti-windup prepare succeeded"
-        );
-        ROBOT_FOC_TEST_EXPECT(nearly_equal(positive_next, 0.0F), "pi positive saturation freezes integral");
-
-        PiPreview negative_preview {};
-        ROBOT_FOC_TEST_EXPECT(
-            negative.preview(Amperes{-5.0F}, Amperes{0.0F}, negative_preview) == ErrorCode::Ok,
-            "pi negative anti-windup preview succeeded"
-        );
-        Volts negative_next {99.0F};
-        ROBOT_FOC_TEST_EXPECT(
-            PiControllerTestAccess::prepare_update(
-                negative,
-                negative_preview,
-                Volts{-3.0F},
-                true,
-                negative_next
-            ) == ErrorCode::Ok,
-            "pi negative anti-windup prepare succeeded"
-        );
-        ROBOT_FOC_TEST_EXPECT(nearly_equal(negative_next, 0.0F), "pi negative saturation freezes integral");
-    }
-
-    // 测试4：饱和时误差反向允许积分退出饱和。
+    // 测试3：同向饱和冻结积分，反向误差允许积分退出饱和。
     {
         PiController controller {};
-        const PiConfig config = make_config(1.0F, 1.0F, Seconds{1.0F}, Volts{-10.0F}, Volts{10.0F});
-        ROBOT_FOC_TEST_EXPECT(controller.configure(config) == ErrorCode::Ok, "pi recovery configure succeeded");
+        const PiConfig config = make_config(1.0F, 1.0F, 1.0F, -10.0F, 10.0F);
+        ROBOT_FOC_TEST_ASSERT(
+            controller.configure(config) == ErrorCode::Ok,
+            "pi anti-windup configure succeeded"
+        );
 
         PiPreview preview {};
+        PreparedState state {};
+
+        ROBOT_FOC_TEST_ASSERT(
+            controller.preview(5.0F, 0.0F, preview) == ErrorCode::Ok,
+            "pi positive saturation preview succeeded"
+        );
+        ROBOT_FOC_TEST_ASSERT(
+            controller.prepare_update(preview, 3.0F, true, state) == ErrorCode::Ok,
+            "pi positive saturation prepare succeeded"
+        );
+        ROBOT_FOC_TEST_ASSERT(
+            controller.commit(state) == ErrorCode::Ok,
+            "pi positive saturation commit succeeded"
+        );
+        ROBOT_FOC_TEST_ASSERT(
+            controller.preview(0.0F, 0.0F, preview) == ErrorCode::Ok,
+            "pi positive saturation verification succeeded"
+        );
         ROBOT_FOC_TEST_EXPECT(
-            controller.preview(Amperes{1.0F}, Amperes{0.0F}, preview) == ErrorCode::Ok,
+            nearly_equal(preview.get_request_output(), 0.0F),
+            "pi positive saturation freezes integral"
+        );
+
+        ROBOT_FOC_TEST_ASSERT(
+            controller.preview(-5.0F, 0.0F, preview) == ErrorCode::Ok,
+            "pi negative saturation preview succeeded"
+        );
+        ROBOT_FOC_TEST_ASSERT(
+            controller.prepare_update(preview, -3.0F, true, state) == ErrorCode::Ok,
+            "pi negative saturation prepare succeeded"
+        );
+        ROBOT_FOC_TEST_ASSERT(
+            controller.commit(state) == ErrorCode::Ok,
+            "pi negative saturation commit succeeded"
+        );
+        ROBOT_FOC_TEST_ASSERT(
+            controller.preview(0.0F, 0.0F, preview) == ErrorCode::Ok,
+            "pi negative saturation verification succeeded"
+        );
+        ROBOT_FOC_TEST_EXPECT(
+            nearly_equal(preview.get_request_output(), 0.0F),
+            "pi negative saturation freezes integral"
+        );
+
+        ROBOT_FOC_TEST_ASSERT(
+            controller.preview(1.0F, 0.0F, preview) == ErrorCode::Ok,
             "pi recovery seed preview succeeded"
         );
-        ROBOT_FOC_TEST_EXPECT(
-            prepare_and_commit(controller, preview, Volts{1.0F}, false) == ErrorCode::Ok,
-            "pi recovery seed state committed"
+        ROBOT_FOC_TEST_ASSERT(
+            controller.prepare_update(preview, 1.0F, false, state) == ErrorCode::Ok,
+            "pi recovery seed prepare succeeded"
         );
-
-        ROBOT_FOC_TEST_EXPECT(
-            controller.preview(Amperes{-0.5F}, Amperes{0.0F}, preview) == ErrorCode::Ok,
-            "pi recovery reverse preview succeeded"
+        ROBOT_FOC_TEST_ASSERT(
+            controller.commit(state) == ErrorCode::Ok,
+            "pi recovery seed commit succeeded"
         );
-        Volts next_integral {99.0F};
-        ROBOT_FOC_TEST_EXPECT(
-            PiControllerTestAccess::prepare_update(
-                controller,
-                preview,
-                Volts{0.2F},
-                true,
-                next_integral
-            ) == ErrorCode::Ok,
+        ROBOT_FOC_TEST_ASSERT(
+            controller.preview(-0.5F, 0.0F, preview) == ErrorCode::Ok,
+            "pi reverse error preview succeeded"
+        );
+        ROBOT_FOC_TEST_ASSERT(
+            controller.prepare_update(preview, 0.2F, true, state) == ErrorCode::Ok,
             "pi reverse error prepare succeeded"
         );
-        ROBOT_FOC_TEST_EXPECT(nearly_equal(next_integral, 0.5F), "pi reverse error reduces saturated integral");
+        ROBOT_FOC_TEST_ASSERT(
+            controller.commit(state) == ErrorCode::Ok,
+            "pi reverse error commit succeeded"
+        );
+        ROBOT_FOC_TEST_ASSERT(
+            controller.preview(0.0F, 0.0F, preview) == ErrorCode::Ok,
+            "pi reverse error verification succeeded"
+        );
+        ROBOT_FOC_TEST_EXPECT(
+            nearly_equal(preview.get_request_output(), 0.5F),
+            "pi reverse error reduces saturated integral"
+        );
     }
 
-    // 测试5：积分输出在正负上下限处钳位。
+    // 测试4：积分输出在配置的正负上下限处钳位。
     {
         PiController controller {};
-        const PiConfig config = make_config(0.0F, 10000.0F, Seconds{0.001F}, Volts{-5.0F}, Volts{5.0F});
-        ROBOT_FOC_TEST_EXPECT(controller.configure(config) == ErrorCode::Ok, "pi clamp configure succeeded");
+        const PiConfig config = make_config(0.0F, 10000.0F, 0.001F, -5.0F, 5.0F);
+        ROBOT_FOC_TEST_ASSERT(
+            controller.configure(config) == ErrorCode::Ok,
+            "pi integral clamp configure succeeded"
+        );
 
         PiPreview preview {};
-        for (int index = 0; index < 3; ++index)
-        {
-            ROBOT_FOC_TEST_EXPECT(
-                controller.preview(Amperes{1.0F}, Amperes{0.0F}, preview) == ErrorCode::Ok,
-                "pi upper clamp preview succeeded"
-            );
-            ROBOT_FOC_TEST_EXPECT(
-                prepare_and_commit(controller, preview, Volts{0.0F}, false) == ErrorCode::Ok,
-                "pi upper clamp update succeeded"
-            );
-        }
-        ROBOT_FOC_TEST_EXPECT(
-            controller.preview(Amperes{0.0F}, Amperes{0.0F}, preview) == ErrorCode::Ok,
-            "pi upper clamp verification preview succeeded"
+        PreparedState state {};
+        ROBOT_FOC_TEST_ASSERT(
+            controller.preview(1.0F, 0.0F, preview) == ErrorCode::Ok,
+            "pi upper clamp preview succeeded"
         );
-        ROBOT_FOC_TEST_EXPECT(nearly_equal(preview.request_output_, 5.0F), "pi integral upper limit enforced");
+        ROBOT_FOC_TEST_ASSERT(
+            controller.prepare_update(preview, 0.0F, false, state) == ErrorCode::Ok,
+            "pi upper clamp prepare succeeded"
+        );
+        ROBOT_FOC_TEST_ASSERT(
+            controller.commit(state) == ErrorCode::Ok,
+            "pi upper clamp commit succeeded"
+        );
+        ROBOT_FOC_TEST_ASSERT(
+            controller.preview(0.0F, 0.0F, preview) == ErrorCode::Ok,
+            "pi upper clamp verification succeeded"
+        );
+        ROBOT_FOC_TEST_EXPECT(
+            nearly_equal(preview.get_request_output(), 5.0F),
+            "pi integral upper limit enforced"
+        );
 
         controller.reset();
-        for (int index = 0; index < 3; ++index)
-        {
-            ROBOT_FOC_TEST_EXPECT(
-                controller.preview(Amperes{-1.0F}, Amperes{0.0F}, preview) == ErrorCode::Ok,
-                "pi lower clamp preview succeeded"
-            );
-            ROBOT_FOC_TEST_EXPECT(
-                prepare_and_commit(controller, preview, Volts{0.0F}, false) == ErrorCode::Ok,
-                "pi lower clamp update succeeded"
-            );
-        }
-        ROBOT_FOC_TEST_EXPECT(
-            controller.preview(Amperes{0.0F}, Amperes{0.0F}, preview) == ErrorCode::Ok,
-            "pi lower clamp verification preview succeeded"
+        ROBOT_FOC_TEST_ASSERT(
+            controller.preview(-1.0F, 0.0F, preview) == ErrorCode::Ok,
+            "pi lower clamp preview succeeded"
         );
-        ROBOT_FOC_TEST_EXPECT(nearly_equal(preview.request_output_, -5.0F), "pi integral lower limit enforced");
+        ROBOT_FOC_TEST_ASSERT(
+            controller.prepare_update(preview, 0.0F, false, state) == ErrorCode::Ok,
+            "pi lower clamp prepare succeeded"
+        );
+        ROBOT_FOC_TEST_ASSERT(
+            controller.commit(state) == ErrorCode::Ok,
+            "pi lower clamp commit succeeded"
+        );
+        ROBOT_FOC_TEST_ASSERT(
+            controller.preview(0.0F, 0.0F, preview) == ErrorCode::Ok,
+            "pi lower clamp verification succeeded"
+        );
+        ROBOT_FOC_TEST_EXPECT(
+            nearly_equal(preview.get_request_output(), -5.0F),
+            "pi integral lower limit enforced"
+        );
     }
 
-    // 测试6：非法输入被拒绝，候选输出和preview输出保持不变。
+    // 测试5：非法输入使复用的输出对象失效，且不污染已提交状态。
     {
         PiController controller {};
-        const PiConfig config = make_config(1.0F, 100.0F, Seconds{0.001F}, Volts{-10.0F}, Volts{10.0F});
-        ROBOT_FOC_TEST_EXPECT(controller.configure(config) == ErrorCode::Ok, "pi invalid-input configure succeeded");
-
-        PiPreview invalid_preview {};
-        invalid_preview.error_ = Amperes{NAN};
-        invalid_preview.request_output_ = Volts{5.0F};
-        Volts next_integral {77.0F};
-        const ErrorCode prepare_result = PiControllerTestAccess::prepare_update(
-            controller,
-            invalid_preview,
-            Volts{3.0F},
-            true,
-            next_integral
+        const PiConfig config = make_config(1.0F, 100.0F, 0.001F, -10.0F, 10.0F);
+        ROBOT_FOC_TEST_ASSERT(
+            controller.configure(config) == ErrorCode::Ok,
+            "pi invalid-input configure succeeded"
         );
-        ROBOT_FOC_TEST_EXPECT(prepare_result == ErrorCode::ErrorInvalidParam, "pi prepare rejects nan preview");
-        ROBOT_FOC_TEST_EXPECT(nearly_equal(next_integral, 77.0F), "pi failed prepare preserves candidate output");
-
-        PiPreview preview_output {};
-        preview_output.error_ = Amperes{11.0F};
-        preview_output.request_output_ = Volts{12.0F};
-        ROBOT_FOC_TEST_EXPECT(
-            controller.preview(Amperes{INFINITY}, Amperes{0.0F}, preview_output)
-                == ErrorCode::ErrorInvalidParam,
-            "pi preview rejects infinite setpoint"
-        );
-        ROBOT_FOC_TEST_EXPECT(nearly_equal(preview_output.error_, 11.0F), "pi invalid preview preserves error output");
-        ROBOT_FOC_TEST_EXPECT(nearly_equal(preview_output.request_output_, 12.0F), "pi invalid preview preserves voltage output");
-    }
-
-    // 测试7：非法重新配置不会覆盖旧配置和积分状态。
-    {
-        PiController controller {};
-        const PiConfig valid_config = make_config(2.0F, 80.0F, Seconds{0.001F}, Volts{-12.0F}, Volts{12.0F});
-        ROBOT_FOC_TEST_EXPECT(controller.configure(valid_config) == ErrorCode::Ok, "pi initial configure succeeded");
 
         PiPreview preview {};
-        ROBOT_FOC_TEST_EXPECT(
-            controller.preview(Amperes{2.0F}, Amperes{0.0F}, preview) == ErrorCode::Ok,
-            "pi state seed preview succeeded"
+        PreparedState state {};
+        ROBOT_FOC_TEST_ASSERT(
+            controller.preview(1.0F, 0.0F, preview) == ErrorCode::Ok,
+            "pi valid preview before invalid input succeeded"
         );
         ROBOT_FOC_TEST_EXPECT(
-            prepare_and_commit(controller, preview, Volts{4.0F}, false) == ErrorCode::Ok,
-            "pi state seed update succeeded"
+            controller.preview(
+                std::numeric_limits<float>::quiet_NaN(),
+                0.0F,
+                preview
+            ) == ErrorCode::ErrorInvalidParam,
+            "pi nonfinite setpoint rejected"
+        );
+        ROBOT_FOC_TEST_EXPECT(
+            controller.prepare_update(preview, 0.0F, false, state)
+                == ErrorCode::ErrorUnsupported,
+            "pi failed preview invalidates reused preview"
         );
 
-        PiConfig invalid_config = valid_config;
-        invalid_config.kp_ = -1.0F;
+        ROBOT_FOC_TEST_ASSERT(
+            controller.preview(1.0F, 0.0F, preview) == ErrorCode::Ok,
+            "pi valid preview before invalid limit succeeded"
+        );
+        ROBOT_FOC_TEST_ASSERT(
+            controller.prepare_update(preview, 1.0F, false, state) == ErrorCode::Ok,
+            "pi valid candidate before invalid limit succeeded"
+        );
         ROBOT_FOC_TEST_EXPECT(
-            controller.configure(invalid_config) == ErrorCode::ErrorInvalidParam,
+            controller.prepare_update(
+                preview,
+                std::numeric_limits<float>::infinity(),
+                false,
+                state
+            ) == ErrorCode::ErrorInvalidParam,
+            "pi nonfinite limited output rejected"
+        );
+        ROBOT_FOC_TEST_EXPECT(
+            controller.commit(state) == ErrorCode::ErrorUnsupported,
+            "pi failed prepare invalidates reused candidate"
+        );
+
+        ROBOT_FOC_TEST_ASSERT(
+            controller.preview(0.0F, 0.0F, preview) == ErrorCode::Ok,
+            "pi invalid-input state verification succeeded"
+        );
+        ROBOT_FOC_TEST_EXPECT(
+            nearly_equal(preview.get_request_output(), 0.0F),
+            "pi invalid input preserves committed integral"
+        );
+    }
+
+    // 测试6：Ki_step与误差相乘溢出时拒绝候选状态，积分保持不变。
+    {
+        PiController controller {};
+        const float maximum = std::numeric_limits<float>::max();
+        const PiConfig config = make_config(
+            0.0F,
+            maximum,
+            1.0F,
+            -maximum,
+            maximum
+        );
+        ROBOT_FOC_TEST_ASSERT(
+            controller.configure(config) == ErrorCode::Ok,
+            "pi overflow configure succeeded"
+        );
+
+        PiPreview preview {};
+        PreparedState state {};
+        ROBOT_FOC_TEST_ASSERT(
+            controller.preview(2.0F, 0.0F, preview) == ErrorCode::Ok,
+            "pi overflow preview succeeded"
+        );
+        ROBOT_FOC_TEST_EXPECT(
+            controller.prepare_update(preview, 0.0F, false, state)
+                == ErrorCode::ErrorInvalidParam,
+            "pi ki step times error overflow rejected"
+        );
+        ROBOT_FOC_TEST_EXPECT(
+            controller.commit(state) == ErrorCode::ErrorUnsupported,
+            "pi overflow invalidates candidate"
+        );
+        ROBOT_FOC_TEST_ASSERT(
+            controller.preview(0.0F, 0.0F, preview) == ErrorCode::Ok,
+            "pi overflow state verification succeeded"
+        );
+        ROBOT_FOC_TEST_EXPECT(
+            nearly_equal(preview.get_request_output(), 0.0F),
+            "pi overflow preserves committed integral"
+        );
+    }
+
+    // 测试7：非法配置保留旧状态；reset和成功配置使旧状态失效。
+    {
+        PiController controller {};
+        const PiConfig config = make_config(1.0F, 100.0F, 0.001F, -10.0F, 10.0F);
+        ROBOT_FOC_TEST_ASSERT(
+            controller.configure(config) == ErrorCode::Ok,
+            "pi revision configure succeeded"
+        );
+
+        PiPreview preview {};
+        PreparedState state {};
+        ROBOT_FOC_TEST_ASSERT(
+            controller.preview(1.0F, 0.0F, preview) == ErrorCode::Ok,
+            "pi pending candidate preview succeeded"
+        );
+        ROBOT_FOC_TEST_ASSERT(
+            controller.prepare_update(preview, 1.0F, false, state) == ErrorCode::Ok,
+            "pi pending candidate prepare succeeded"
+        );
+
+        PiConfig invalid = config;
+        invalid.kp_ = -1.0F;
+        ROBOT_FOC_TEST_EXPECT(
+            controller.configure(invalid) == ErrorCode::ErrorInvalidParam,
             "pi invalid reconfigure rejected"
         );
         ROBOT_FOC_TEST_EXPECT(
-            controller.preview(Amperes{0.0F}, Amperes{0.0F}, preview) == ErrorCode::Ok,
-            "pi old configuration remains usable"
-        );
-        ROBOT_FOC_TEST_EXPECT(nearly_equal(preview.request_output_, 0.16F), "pi invalid configure preserves integral state");
-    }
-
-    // 测试8：reset只清除积分状态，不清除配置。
-    {
-        PiController controller {};
-        const PiConfig config = make_config(1.0F, 10.0F, Seconds{0.1F}, Volts{-5.0F}, Volts{5.0F});
-        ROBOT_FOC_TEST_EXPECT(controller.configure(config) == ErrorCode::Ok, "pi reset configure succeeded");
-
-        PiPreview preview {};
-        ROBOT_FOC_TEST_EXPECT(
-            controller.preview(Amperes{1.0F}, Amperes{0.0F}, preview) == ErrorCode::Ok,
-            "pi reset seed preview succeeded"
-        );
-        ROBOT_FOC_TEST_EXPECT(
-            prepare_and_commit(controller, preview, Volts{1.0F}, false) == ErrorCode::Ok,
-            "pi reset seed update succeeded"
+            controller.commit(state) == ErrorCode::Ok,
+            "pi invalid reconfigure preserves pending candidate"
         );
 
+        ROBOT_FOC_TEST_ASSERT(
+            controller.preview(1.0F, 0.0F, preview) == ErrorCode::Ok,
+            "pi preview before reset succeeded"
+        );
+        ROBOT_FOC_TEST_ASSERT(
+            controller.prepare_update(preview, 1.1F, false, state) == ErrorCode::Ok,
+            "pi candidate before reset succeeded"
+        );
         controller.reset();
         ROBOT_FOC_TEST_EXPECT(
-            controller.preview(Amperes{0.0F}, Amperes{0.0F}, preview) == ErrorCode::Ok,
-            "pi remains configured after reset"
+            controller.commit(state) == ErrorCode::ErrorUnsupported,
+            "pi reset invalidates old candidate"
         );
-        ROBOT_FOC_TEST_EXPECT(nearly_equal(preview.request_output_, 0.0F), "pi reset clears integral state");
+        ROBOT_FOC_TEST_EXPECT(
+            controller.prepare_update(preview, 1.1F, false, state)
+                == ErrorCode::ErrorUnsupported,
+            "pi reset invalidates old preview"
+        );
+
+        ROBOT_FOC_TEST_ASSERT(
+            controller.preview(1.0F, 0.0F, preview) == ErrorCode::Ok,
+            "pi preview before reconfigure succeeded"
+        );
+        ROBOT_FOC_TEST_ASSERT(
+            controller.prepare_update(preview, 1.0F, false, state) == ErrorCode::Ok,
+            "pi candidate before reconfigure succeeded"
+        );
+        ROBOT_FOC_TEST_ASSERT(
+            controller.configure(config) == ErrorCode::Ok,
+            "pi valid reconfigure succeeded"
+        );
+        ROBOT_FOC_TEST_EXPECT(
+            controller.commit(state) == ErrorCode::ErrorUnsupported,
+            "pi valid reconfigure invalidates old candidate"
+        );
+        ROBOT_FOC_TEST_EXPECT(
+            controller.prepare_update(preview, 1.0F, false, state)
+                == ErrorCode::ErrorUnsupported,
+            "pi valid reconfigure invalidates old preview"
+        );
+    }
+
+    // 测试8：来源检查和commit_pair保证两路状态全部有效后再统一提交。
+    {
+        PiController first {};
+        PiController second {};
+        const PiConfig config = make_config(1.0F, 100.0F, 0.001F, -10.0F, 10.0F);
+        ROBOT_FOC_TEST_ASSERT(
+            first.configure(config) == ErrorCode::Ok,
+            "pi pair first configure succeeded"
+        );
+        ROBOT_FOC_TEST_ASSERT(
+            second.configure(config) == ErrorCode::Ok,
+            "pi pair second configure succeeded"
+        );
+
+        PiPreview first_preview {};
+        PiPreview second_preview {};
+        PreparedState first_state {};
+        PreparedState second_state {};
+        ROBOT_FOC_TEST_ASSERT(
+            first.preview(1.0F, 0.0F, first_preview) == ErrorCode::Ok,
+            "pi pair first preview succeeded"
+        );
+        ROBOT_FOC_TEST_ASSERT(
+            second.preview(2.0F, 0.0F, second_preview) == ErrorCode::Ok,
+            "pi pair second preview succeeded"
+        );
+        ROBOT_FOC_TEST_EXPECT(
+            second.prepare_update(first_preview, 1.0F, false, second_state)
+                == ErrorCode::ErrorUnsupported,
+            "pi foreign preview rejected"
+        );
+        ROBOT_FOC_TEST_ASSERT(
+            first.prepare_update(first_preview, 1.0F, false, first_state)
+                == ErrorCode::Ok,
+            "pi pair first prepare succeeded"
+        );
+        ROBOT_FOC_TEST_ASSERT(
+            second.prepare_update(second_preview, 2.0F, false, second_state)
+                == ErrorCode::Ok,
+            "pi pair second prepare succeeded"
+        );
+        ROBOT_FOC_TEST_EXPECT(
+            second.commit(first_state) == ErrorCode::ErrorUnsupported,
+            "pi foreign candidate rejected"
+        );
+        ROBOT_FOC_TEST_EXPECT(
+            PiController::commit_pair(first, first_state, first, first_state)
+                == ErrorCode::ErrorInvalidParam,
+            "pi pair rejects identical controller instances"
+        );
+
+        first.reset();
+        ROBOT_FOC_TEST_EXPECT(
+            PiController::commit_pair(first, first_state, second, second_state)
+                == ErrorCode::ErrorUnsupported,
+            "pi stale first candidate rejects whole pair"
+        );
+
+        PiPreview verification {};
+        ROBOT_FOC_TEST_ASSERT(
+            first.preview(0.0F, 0.0F, verification) == ErrorCode::Ok,
+            "pi first-axis failure first verification succeeded"
+        );
+        ROBOT_FOC_TEST_EXPECT(
+            nearly_equal(verification.get_request_output(), 0.0F),
+            "pi first-axis failure leaves first controller unchanged"
+        );
+        ROBOT_FOC_TEST_ASSERT(
+            second.preview(0.0F, 0.0F, verification) == ErrorCode::Ok,
+            "pi first-axis failure second verification succeeded"
+        );
+        ROBOT_FOC_TEST_EXPECT(
+            nearly_equal(verification.get_request_output(), 0.0F),
+            "pi first-axis failure leaves second controller unchanged"
+        );
+
+        ROBOT_FOC_TEST_ASSERT(
+            first.preview(1.0F, 0.0F, first_preview) == ErrorCode::Ok,
+            "pi pair refreshed first preview succeeded"
+        );
+        ROBOT_FOC_TEST_ASSERT(
+            first.prepare_update(first_preview, 1.0F, false, first_state)
+                == ErrorCode::Ok,
+            "pi pair refreshed first candidate succeeded"
+        );
+
+        second.reset();
+        ROBOT_FOC_TEST_EXPECT(
+            PiController::commit_pair(first, first_state, second, second_state)
+                == ErrorCode::ErrorUnsupported,
+            "pi stale second candidate rejects whole pair"
+        );
+
+        ROBOT_FOC_TEST_ASSERT(
+            first.preview(0.0F, 0.0F, verification) == ErrorCode::Ok,
+            "pi second-axis failure first verification succeeded"
+        );
+        ROBOT_FOC_TEST_EXPECT(
+            nearly_equal(verification.get_request_output(), 0.0F),
+            "pi second-axis failure leaves first controller unchanged"
+        );
+        ROBOT_FOC_TEST_ASSERT(
+            second.preview(0.0F, 0.0F, verification) == ErrorCode::Ok,
+            "pi second-axis failure second verification succeeded"
+        );
+        ROBOT_FOC_TEST_EXPECT(
+            nearly_equal(verification.get_request_output(), 0.0F),
+            "pi second-axis failure leaves second controller unchanged"
+        );
+
+        ROBOT_FOC_TEST_ASSERT(
+            second.preview(2.0F, 0.0F, second_preview) == ErrorCode::Ok,
+            "pi pair refreshed second preview succeeded"
+        );
+        ROBOT_FOC_TEST_ASSERT(
+            second.prepare_update(second_preview, 2.0F, false, second_state)
+                == ErrorCode::Ok,
+            "pi pair refreshed second candidate succeeded"
+        );
+        ROBOT_FOC_TEST_ASSERT(
+            PiController::commit_pair(first, first_state, second, second_state)
+                == ErrorCode::Ok,
+            "pi pair commit succeeded"
+        );
+
+        ROBOT_FOC_TEST_ASSERT(
+            first.preview(0.0F, 0.0F, first_preview) == ErrorCode::Ok,
+            "pi pair first result preview succeeded"
+        );
+        ROBOT_FOC_TEST_ASSERT(
+            second.preview(0.0F, 0.0F, second_preview) == ErrorCode::Ok,
+            "pi pair second result preview succeeded"
+        );
+        ROBOT_FOC_TEST_EXPECT(
+            nearly_equal(first_preview.get_request_output(), 0.1F),
+            "pi pair first integral committed"
+        );
+        ROBOT_FOC_TEST_EXPECT(
+            nearly_equal(second_preview.get_request_output(), 0.2F),
+            "pi pair second integral committed"
+        );
     }
 }
 
@@ -391,70 +648,65 @@ void test_pi_controller()
  */
 void test_pi_controller_closed()
 {
-    using robot_foc::algorithm::PiConfig;
-    using robot_foc::algorithm::PiController;
-    using robot_foc::algorithm::PiPreview;
-    using robot_foc::common::Amperes;
-    using robot_foc::common::ErrorCode;
-    using robot_foc::common::Seconds;
-    using robot_foc::common::Volts;
     using robot_foc::test::mock::MockFirstOrderPlant;
-    using robot_foc::test::PiControllerTestAccess;
 
-    constexpr Seconds kSampleTime {0.01F};
+    constexpr float kSampleTime {0.01F};
     constexpr float kPlantTimeConstant {0.2F};
-    constexpr Amperes kSetpoint {1.0F};
-    constexpr Volts kVoltageLimit {1.0F};
+    constexpr float kSetpoint {1.0F};
+    constexpr float kOutputMinimum {-1.0F};
+    constexpr float kOutputMaximum {1.0F};
     constexpr std::size_t kSimulationSteps {300U};
     constexpr float kSteadyStateTolerance {0.1F};
     constexpr float kMaximumOvershootRatio {0.15F};
 
     PiController controller {};
-    PiConfig config {};
-    config.kp_ = 1.2F;
-    config.ki_ = 2.5F;
-    config.sample_time_ = kSampleTime;
-    config.integral_min_ = Volts{-5.0F};
-    config.integral_max_ = Volts{5.0F};
-    ROBOT_FOC_TEST_EXPECT(controller.configure(config) == ErrorCode::Ok, "pi closed-loop configure succeeded");
+    const PiConfig config = make_config(
+        1.2F,
+        2.5F,
+        kSampleTime,
+        -5.0F,
+        5.0F
+    );
+    ROBOT_FOC_TEST_ASSERT(
+        controller.configure(config) == ErrorCode::Ok,
+        "pi closed-loop configure succeeded"
+    );
 
-    MockFirstOrderPlant plant(kSampleTime, kPlantTimeConstant);
+    MockFirstOrderPlant plant {kSampleTime, kPlantTimeConstant};
     plant.reset();
 
-    Amperes feedback {0.0F};
-    Amperes peak_feedback {0.0F};
+    float feedback {0.0F};
+    float peak_feedback {0.0F};
     for (std::size_t step = 0U; step < kSimulationSteps; ++step)
     {
         PiPreview preview {};
-        const ErrorCode preview_result = controller.preview(kSetpoint, feedback, preview);
-        ROBOT_FOC_TEST_EXPECT(preview_result == ErrorCode::Ok, "pi closed-loop preview succeeded");
-
-        Volts limited_output = preview.request_output_;
-        bool limit_flag {false};
-        if (limited_output > kVoltageLimit)
-        {
-            limited_output = kVoltageLimit;
-            limit_flag = true;
-        }
-        else if (limited_output < -kVoltageLimit)
-        {
-            limited_output = -kVoltageLimit;
-            limit_flag = true;
-        }
-
-        Volts next_integral {0.0F};
-        const ErrorCode prepare_result = PiControllerTestAccess::prepare_update(
-            controller,
-            preview,
-            limited_output,
-            limit_flag,
-            next_integral
+        PreparedState state {};
+        ROBOT_FOC_TEST_ASSERT(
+            controller.preview(kSetpoint, feedback, preview) == ErrorCode::Ok,
+            "pi closed-loop preview succeeded"
         );
-        ROBOT_FOC_TEST_EXPECT(prepare_result == ErrorCode::Ok, "pi closed-loop prepare succeeded");
-        if (prepare_result == ErrorCode::Ok)
-        {
-            PiControllerTestAccess::commit(controller, next_integral);
-        }
+
+        const float requested_output = preview.get_request_output();
+        const float limited_output = std::clamp(
+            requested_output,
+            kOutputMinimum,
+            kOutputMaximum
+        );
+        const bool limit_flag = !nearly_equal(limited_output, requested_output);
+
+        ROBOT_FOC_TEST_ASSERT(
+            controller.prepare_update(
+                preview,
+                limited_output,
+                limit_flag,
+                state
+            ) == ErrorCode::Ok,
+            "pi closed-loop prepare succeeded"
+        );
+        ROBOT_FOC_TEST_ASSERT(
+            controller.commit(state) == ErrorCode::Ok,
+            "pi closed-loop commit succeeded"
+        );
 
         feedback = plant.update(limited_output);
         if (feedback > peak_feedback)
@@ -472,10 +724,4 @@ void test_pi_controller_closed()
         peak_feedback <= maximum_peak,
         "pi closed-loop overshoot within tolerance"
     );
-    /*
-    std::cout << "\n[PiController Closed Step] set=" << kSetpoint
-              << " | peak_fb=" << peak_feedback
-              << " | final_fb=" << feedback
-              << " | allowed_peak=" << maximum_peak << '\n';
-    */
 }
