@@ -2,8 +2,8 @@
  * @file pid.hpp
  * @brief 分步式 PI、位置式 PID 和增量式 PID 控制算法接口。
  * @details 三类控制器均为纯算法模块，不依赖硬件或 RTOS。
- * - PiController：通过 preview、prepare_update 和 commit 分步更新积分，支持两个控制器成对提交。
- * - PositionalPid：输出绝对控制量，支持输出限幅和积分限幅。
+ * - PiController：通过 preview、prepare_update 和 commit
+ * - 分步更新积分，支持 commit_pair 双控制器成对提交。 * - PositionalPid：输出绝对控制量，支持输出限幅和积分限幅。
  * - IncrementalPid：输出控制增量，保存误差历史。
  * PiController 提供受控公共接口，通过来源及版本校验拒绝无效或过期的状态。
  * @note 数值运算采用 float；PI 接口通过 common::ErrorCode 报告业务错误。
@@ -130,7 +130,7 @@ namespace robot_foc::algorithm
          * @param[in] setpoint 目标设定值。
          * @param[in] feedback 反馈测量值，与目标值单位一致。
          * @param[out] preview_out 预览输出
-         * 失败时 owner_ 被清空，候选状态无效，
+         * 失败时 owner_ 被清空，预览对象无效。
          * 其他成员不应读取。         
          * @retval common::ErrorCode::Ok 计算成功。
          * @retval common::ErrorCode::ErrorNotReady 控制器未配置。
@@ -147,7 +147,8 @@ namespace robot_foc::algorithm
          * @details 校验预览来源及版本，执行方向感知条件积分和积分限幅，不修改控制器内部状态。
          * 成功时绑定候选状态的来源和版本；失败时使输出候选状态失效。
          * @param[in] preview 当前控制器、当前版本的有效预览。
-         * @param[in] limited_output 与该预览对应的限幅后控制量。
+         * @param[in] limited_output 与当前预览对应的限幅后控制量，
+         * 单位及坐标轴必须与 preview.request_output_ 一致。
          * @param[in] limit_flag 是否发生外部输出限幅。
          * @param[out] next_state 输出候选积分状态；
          * 失败时 owner_ 被清空，候选状态无效，
@@ -155,7 +156,7 @@ namespace robot_foc::algorithm
          * @retval common::ErrorCode::Ok 候选状态生成成功。
          * @retval common::ErrorCode::ErrorNotReady 控制器未配置。
          * @retval common::ErrorCode::ErrorInvalidParam 输入或计算结果非法。
-         * @retval common::ErrorCode::ErrorUnsupported 预览来源或版本不匹。
+         * @retval common::ErrorCode::ErrorUnsupported 预览来源或版本不匹配。
          */
         [[nodiscard]] common::ErrorCode prepare_update(
             const PiPreview& preview,
@@ -171,7 +172,8 @@ namespace robot_foc::algorithm
          * @param[in] state 待提交的候选状态。
          * @retval common::ErrorCode::Ok 提交成功。
          * @retval common::ErrorCode::ErrorNotReady 控制器未配置。
-         * @retval common::ErrorCode::ErrorInvalidParam 候选状态非法或过期。
+         * @retval common::ErrorCode::ErrorInvalidParam 积分非有限或超出配置范围。
+         * @retval common::ErrorCode::ErrorUnsupported 来源或版本不匹配.
          */
         [[nodiscard]] common::ErrorCode commit(const PreparedState& state) noexcept;
 
@@ -185,7 +187,8 @@ namespace robot_foc::algorithm
          * @param[in] second_state 第二个控制器的候选状态。
          * @retval common::ErrorCode::Ok 两个控制器均提交成功。
          * @retval common::ErrorCode::ErrorNotReady 控制器未配置。
-         * @retval common::ErrorCode::ErrorInvalidParam 两个实例相同或候选状态非法。
+         * @retval common::ErrorCode::ErrorInvalidParam  两个控制器为同一实例，或候选积分非法。
+         * @retval common::ErrorCode::ErrorUnsupported 来源或版本不匹配.
          * @warning 调用期间不得有并发状态修改；本接口不提供并发同步或指令级原子性。
          */
         [[nodiscard]] static common::ErrorCode commit_pair(
@@ -219,7 +222,8 @@ namespace robot_foc::algorithm
          * @param[in] state 待校验的候选状态。
          * @retval common::ErrorCode::Ok 状态合法。
          * @retval common::ErrorCode::ErrorNotReady 控制器未配置。
-         * @retval common::ErrorCode::ErrorInvalidParam 来源或版本不匹配、积分非有限或超出配置范围。
+         * @retval common::ErrorCode::ErrorInvalidParam 积分非有限或超出配置范围。
+         * @retval common::ErrorCode::ErrorUnsupported 来源或版本不匹配.
          */
         [[nodiscard]] common::ErrorCode validate_prepared_state(
             const PreparedState& state

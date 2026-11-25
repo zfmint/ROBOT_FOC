@@ -2,8 +2,10 @@
  * @file pid.cpp
  * @brief 电流环PI、位置式PID和增量式PID控制算法实现。
  * @details
- * PiController使用两阶段状态更新：preview()生成请求电压，prepare_update()依据外部限幅
- * 结果生成积分候选值，commit()由CurrentLoop在d/q两路均成功后统一执行。
+ * PiController使用分阶段状态更新：
+ * preview()生成原始请求控制量，
+ * prepare_update()依据外部限幅结果生成积分候选值，
+ * commit_pair()在d/q两路均校验成功后统一提交。 
  * PositionalPid采用方向感知条件积分，IncrementalPid输出控制增量。
  * @note 对外接口、错误语义和调用前置条件参见pid.hpp。
  */
@@ -46,11 +48,6 @@ namespace robot_foc::algorithm
     [[nodiscard]] float PiController::PiPreview::get_request_output() const noexcept
     {
         return request_output_;
-    }
-
-    void PiController::commit(float next_integral) noexcept
-    {
-        integral_output_ = next_integral;
     }
 
     [[nodiscard]] common::ErrorCode PiController::preview(
@@ -114,13 +111,13 @@ namespace robot_foc::algorithm
         {
             return common::ErrorCode::ErrorInvalidParam;
         }
-        if ((preview.owner_!= this)
+        if ((preview.owner_ != this)
          || (preview.revision_ != revision_)
         )
         {
             return common::ErrorCode::ErrorUnsupported;
         }
-        if (limit_flag == true)
+        if (limit_flag)
         {
             // 若是电压进行过限幅，进行积分饱和判断。积分饱和则不允许继续积分
             integral_worsens_saturation = (((preview.request_output_ > limited_output) && (preview.error_ > 0.0F))
@@ -150,6 +147,75 @@ namespace robot_foc::algorithm
         result.owner_ = this;
         result.revision_ = revision_;
         next_state = result;
+        return common::ErrorCode::Ok;
+    }
+
+    [[nodiscard]] common::ErrorCode PiController::validate_prepared_state(
+        const PreparedState& state
+    ) const noexcept
+    {
+        if (!configured_)
+        {
+            return common::ErrorCode::ErrorNotReady;
+        }
+        if ((state.owner_!= this)
+         || (state.revision_ != revision_)
+        )
+        {
+            return common::ErrorCode::ErrorUnsupported;
+        }
+        if (!std::isfinite(state.next_integral_))
+        {
+            return common::ErrorCode::ErrorInvalidParam;
+        }
+        if ((state.next_integral_ < piconfig_.integral_min_)
+         || (state.next_integral_ > piconfig_.integral_max_))
+        {
+            return common::ErrorCode::ErrorInvalidParam;
+        }
+        return common::ErrorCode::Ok;
+    }
+
+    void PiController::apply_prepared_state(const PreparedState& state) noexcept
+    {
+        integral_output_ = state.next_integral_;
+        ++revision_;
+    }
+
+    [[nodiscard]] common::ErrorCode PiController::commit(const PreparedState& state) noexcept
+    {
+        const auto ret = validate_prepared_state(state);
+        if (ret == common::ErrorCode::Ok)
+        {
+            apply_prepared_state(state);
+            return common::ErrorCode::Ok;
+        }
+        return ret;
+    }
+
+    [[nodiscard]] common::ErrorCode PiController::commit_pair(
+        PiController& first,
+        const PreparedState& first_state,
+        PiController& second,
+        const PreparedState& second_state
+    ) noexcept
+    {
+        if (&first == &second)
+        {
+            return common::ErrorCode::ErrorInvalidParam;
+        }
+        const auto ret_first = first.validate_prepared_state(first_state);
+        if (ret_first != common::ErrorCode::Ok)
+        {
+            return ret_first;
+        }
+        const auto ret_second = second.validate_prepared_state(second_state);
+        if (ret_second != common::ErrorCode::Ok)
+        {
+            return ret_second;
+        }
+        first.apply_prepared_state(first_state);
+        second.apply_prepared_state(second_state);
         return common::ErrorCode::Ok;
     }
 
