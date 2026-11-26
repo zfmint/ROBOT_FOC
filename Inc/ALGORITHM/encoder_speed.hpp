@@ -26,7 +26,6 @@
 
 #include "ALGORITHM/sliding_average.hpp"
 
-#include <cstddef>
 #include <cstdint>
 
 #include "error_code.hpp"

@@ -11,7 +11,6 @@
  */
 #include "ALGORITHM/current_loop.hpp"
 
-#include "units.hpp"
 #include "ALGORITHM/foc_transform.hpp"
 #include "ALGORITHM/voltage_limit.hpp"
 
@@ -26,16 +25,19 @@ namespace robot_foc::algorithm
         {
             return common::ErrorCode::ErrorAlreadyInit;
         }
-        auto ret_id = pi_id_.configure(id_config);
+
+        const auto ret_id = pi_id_.configure(id_config);
         if (ret_id != common::ErrorCode::Ok)
         {
             return ret_id;
         }
-        auto ret_iq = pi_iq_.configure(iq_config);
+
+        const auto ret_iq = pi_iq_.configure(iq_config);
         if (ret_iq != common::ErrorCode::Ok)
         {
             return ret_iq;
         }
+
         configured_ = true;
         return common::ErrorCode::Ok;
     }
@@ -48,24 +50,25 @@ namespace robot_foc::algorithm
 
     [[nodiscard]] common::ErrorCode CurrentLoop::calculate(
         const CurrentLoopInput& current_input,
-        SvpwmDuty& duty_output
+        CurrentLoopOutput& current_output
     ) noexcept
     {
         const CurrentLoopInput& input = current_input;
         common::DQVoltage volt_piout {};
         common::AlphaBetaVoltage volt_inversepark {};
         common::DQVoltage volt_parkout {};
-        common::Volts id_next {0.0F};
-        common::Volts iq_next {0.0F};
+        PiController::PreparedState id_next {};
+        PiController::PreparedState iq_next {};
         VoltageLimitOut limit_result {};
-        SvpwmDuty result {};
-        PiPreview id_pre {};
-        PiPreview iq_pre {};
+        CurrentLoopOutput result {};
+        PiController::PiPreview id_pre {};
+        PiController::PiPreview iq_pre {};
         if (!configured_)
         {
             return common::ErrorCode::ErrorNotReady;
         }
-        auto ret_id = pi_id_.PiController::preview(
+
+        const auto ret_id = pi_id_.preview(
             input.current_reference_.d_current_,
             input.current_feedback_.d_current_,
             id_pre 
@@ -74,8 +77,8 @@ namespace robot_foc::algorithm
         {
             return ret_id;
         }
-        volt_piout.d_volt_ = id_pre.request_output_;
-        auto ret_iq = pi_iq_.PiController::preview(
+        volt_piout.d_volt_ = id_pre.get_request_output();
+        const auto ret_iq = pi_iq_.preview(
             input.current_reference_.q_current_,
             input.current_feedback_.q_current_,
             iq_pre 
@@ -84,8 +87,9 @@ namespace robot_foc::algorithm
         {
             return ret_iq;
         }
-        volt_piout.q_volt_ = iq_pre.request_output_;
-        auto ret_inversepark = FocTransform::inverse_park(
+        volt_piout.q_volt_ = iq_pre.get_request_output();
+
+        const auto ret_inversepark = FocTransform::inverse_park(
             volt_piout,
             input.electrical_angle_,
             volt_inversepark
@@ -94,7 +98,8 @@ namespace robot_foc::algorithm
         {
             return ret_inversepark;
         }
-        auto ret_limit = VoltageLimit::hexagon_limit(
+
+        const auto ret_limit = VoltageLimit::hexagon_limit(
             volt_inversepark,
             input.v_bus_,
             limit_result
@@ -103,7 +108,8 @@ namespace robot_foc::algorithm
         {
             return ret_limit;
         }
-        auto ret_park = FocTransform::park(
+
+        const auto ret_park = FocTransform::park(
             limit_result.alphabeta_out_,
             input.electrical_angle_,
             volt_parkout
@@ -112,7 +118,8 @@ namespace robot_foc::algorithm
         {
             return ret_park;
         }
-        auto ret_idupdate = pi_id_.PiController::prepare_update(
+
+        const auto ret_idupdate = pi_id_.prepare_update(
             id_pre,
             volt_parkout.d_volt_,
             limit_result.is_limited_,
@@ -122,7 +129,7 @@ namespace robot_foc::algorithm
         {
             return ret_idupdate;
         }
-        auto ret_iqupdate = pi_iq_.PiController::prepare_update(
+        const auto ret_iqupdate = pi_iq_.prepare_update(
             iq_pre,
             volt_parkout.q_volt_,
             limit_result.is_limited_,
@@ -132,19 +139,24 @@ namespace robot_foc::algorithm
         {
             return ret_iqupdate;
         }
-        auto ret_svpwm = Svpwm::svpwm_calculate(
+
+        const auto ret_svpwm = Svpwm::svpwm_calculate(
             limit_result.alphabeta_out_,
             input.v_bus_,
-            result
+            result.duty_
         );
         if (ret_svpwm != common::ErrorCode::Ok)
         {
             return ret_svpwm;
         }
-        pi_id_.PiController::commit(id_next);
-        pi_iq_.PiController::commit(iq_next);
-        duty_output = result;
+
+        const auto ret_commit = PiController::commit_pair(pi_id_, id_next, pi_iq_, iq_next);
+        if (ret_commit != common::ErrorCode::Ok)
+        {
+            return ret_commit;
+        }
+        result.is_voltage_limited_ = limit_result.is_limited_;
+        current_output = result;
         return common::ErrorCode::Ok;
     }
-
 } // namespace robot_foc::algorithm

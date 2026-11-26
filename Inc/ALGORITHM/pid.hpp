@@ -119,6 +119,7 @@ namespace robot_foc::algorithm
          * @param[in] config PI 增益、采样周期及积分输出限幅。
          * @retval common::ErrorCode::Ok 配置成功。
          * @retval common::ErrorCode::ErrorInvalidParam 参数或 Ki*Ts 非有限、增益为负、采样周期非正或积分范围不包含零。
+         * @retval common::ErrorCode::ErrorAlreadyInit 已初始化过
          */
         [[nodiscard]] common::ErrorCode configure(
             const PiConfig& config
